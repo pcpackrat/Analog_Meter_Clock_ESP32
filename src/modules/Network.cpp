@@ -915,7 +915,7 @@ void NetworkManager::setupRoutes() {
       [](AsyncWebServerRequest *request, String filename, size_t index,
          uint8_t *data, size_t len, bool final) {
         if (!index) {
-          Serial.printf("Update Start: %s\n", filename.c_str());
+          Serial.printf("Update Start: %s\r\n", filename.c_str());
           // Update.runAsync(true); // Don't use async, we need blocking
           // write? No, AsyncWebServer is async.
           if (!Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000)) {
@@ -929,7 +929,7 @@ void NetworkManager::setupRoutes() {
         }
         if (final) {
           if (Update.end(true)) {
-            Serial.printf("Update Success: %uB\n", index + len);
+            Serial.printf("Update Success: %uB\r\n", index + len);
           } else {
             Update.printError(Serial);
           }

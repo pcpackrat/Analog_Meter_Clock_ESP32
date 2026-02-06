@@ -18,7 +18,7 @@ void TimeManager::setUseNTP(bool enabled) {
     if (server.length() == 0) {
       server = "time.google.com"; // Fallback
     }
-    Serial.printf("Enabling NTP with server: '%s'\n", server.c_str());
+    Serial.printf("Enabling NTP with server: '%s'\r\n", server.c_str());
 
     // Check if we can resolve the hostname
     IPAddress ntpIP;
@@ -34,7 +34,7 @@ void TimeManager::setUseNTP(bool enabled) {
     if (tz.isEmpty()) {
       tz = "CST6CDT,M3.2.0,M11.1.0"; // Fallback to Chicago
     }
-    Serial.printf("Configuring Time with TZ: '%s' and Server: '%s'\n",
+    Serial.printf("Configuring Time with TZ: '%s' and Server: '%s'\r\n",
                   tz.c_str(), server.c_str());
 
     if (sntp_enabled()) {
@@ -55,10 +55,10 @@ void TimeManager::setUseNTP(bool enabled) {
     tzset();
 
     Serial.println("NTP Initialized via Manual Sequence (Google Primary). "
-                   "Waiting for sync...");
+                   "Waiting for sync...\r\n");
   } else {
     if (sntp_enabled()) {
-      Serial.println("Disabling NTP...");
+      Serial.println("Disabling NTP...\r\n");
       sntp_stop();
     }
   }
@@ -68,10 +68,10 @@ void TimeManager::setOverrideUTC(bool enabled) {
   if (enabled != _isUTC) {
     _isUTC = enabled;
     if (_isUTC) {
-      Serial.println("Switching to UTC");
+      Serial.println("Switching to UTC\r\n");
       configTzTime("UTC0", _config.getNTP().c_str());
     } else {
-      Serial.println("Switching to Local Time");
+      Serial.println("Switching to Local Time\r\n");
       configTzTime(_config.getTimezone().c_str(), _config.getNTP().c_str());
     }
   }
@@ -83,15 +83,15 @@ void TimeManager::begin() {
   if (_config.getUseNTP()) {
     setUseNTP(true);
   } else {
-    Serial.println("NTP Disabled by config");
+    Serial.println("NTP Disabled by config\r\n");
   }
 
   // Setup RTC
   if (_rtc.begin()) {
     _rtcFound = true;
-    Serial.println("RTC Found");
+    Serial.println("RTC Found\r\n");
     if (_rtc.lostPower()) {
-      Serial.println("RTC lost power!");
+      Serial.println("RTC lost power!\r\n");
     }
 
     // Attempt to set system time from RTC immediately on boot
@@ -99,7 +99,7 @@ void TimeManager::begin() {
     syncSystemToRTC();
 
   } else {
-    Serial.println("Couldn't find RTC");
+    Serial.println("Couldn't find RTC\r\n");
   }
 }
 
@@ -134,7 +134,7 @@ void TimeManager::syncSystemToRTC() {
   if (now.year() > 2020) {
     struct timeval tv = {(time_t)now.unixtime(), 0};
     settimeofday(&tv, NULL);
-    Serial.println("Synced system time from RTC");
+    Serial.println("Synced system time from RTC\r\n");
   }
 }
 
@@ -146,7 +146,7 @@ void TimeManager::syncRTCToSystem() {
   time(&now);
   if (now > 100000) { // Valid timestamp
     _rtc.adjust(DateTime(now));
-    Serial.println("Updated RTC from System (NTP)");
+    Serial.println("Updated RTC from System (NTP)\r\n");
   }
 }
 
