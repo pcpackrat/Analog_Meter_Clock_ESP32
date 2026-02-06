@@ -380,8 +380,9 @@ void NetworkManager::setupRoutes() {
     html += getCommonStyle();
     html += "<script>";
     html += "function updateSlider(sliderId, valueId) {";
-    html += "  document.getElementById(valueId).textContent = "
-            "document.getElementById(sliderId).value + '%';";
+    html += "  var val = document.getElementById(sliderId).value;";
+    html += "  var pct = Math.round(val * 100 / 255);";
+    html += "  document.getElementById(valueId).textContent = pct + '%';";
     html += "}";
     html += "function toggleTimeSource() {";
     html += "  var useNTP = "
@@ -558,13 +559,13 @@ void NetworkManager::setupRoutes() {
     html += "</div>";
 
     // Night Mode Times
-    html += "<label for='nightStart'>Night Mode Start:</label>";
+    html += "<label for='nightStart'>Night Mode Start(CST):</label>";
     char nsBuf[6];
     sprintf(nsBuf, "%02d:%02d", nightStart, _config.getNightStartMinute());
     html += "<input type='time' name='nightStart' id='nightStart' value='" +
             String(nsBuf) + "'>";
 
-    html += "<label for='nightEnd'>Night Mode End:</label>";
+    html += "<label for='nightEnd'>Night Mode End(CST):</label>";
     char neBuf[6];
     sprintf(neBuf, "%02d:%02d", nightEnd, _config.getNightEndMinute());
     html += "<input type='time' name='nightEnd' id='nightEnd' value='" +
@@ -723,7 +724,8 @@ void NetworkManager::setupRoutes() {
           if (sep > 0) {
             int h = tStr.substring(0, sep).toInt();
             int m = tStr.substring(sep + 1).toInt();
-            Serial.printf("Saving Night Start manually parsed: %d:%d\n", h, m);
+            Serial.printf("Saving Night Start manually parsed: %d:%d\r\n", h,
+                          m);
             _config.saveNightStart(h);
             _config.saveNightStartMinute(m);
           } else {
@@ -737,7 +739,7 @@ void NetworkManager::setupRoutes() {
           if (sep > 0) {
             int h = tStr.substring(0, sep).toInt();
             int m = tStr.substring(sep + 1).toInt();
-            Serial.printf("Saving Night End manually parsed: %d:%d\n", h, m);
+            Serial.printf("Saving Night End manually parsed: %d:%d\r\n", h, m);
             _config.saveNightEnd(h);
             _config.saveNightEndMinute(m);
           } else {
