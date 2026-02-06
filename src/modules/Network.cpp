@@ -753,24 +753,7 @@ void NetworkManager::setupRoutes() {
   _server.on("/calibration", HTTP_GET, [this](AsyncWebServerRequest *request) {
     String html = "<html><head><meta name='viewport' "
                   "content='width=device-width, initial-scale=1'>";
-    html += "<style>";
-    html += "body { font-family: Arial, sans-serif; max-width: 600px; margin: "
-            "0 auto; padding: 20px; font-size: 16px; }";
-    html += "h1 { text-align: center; color: #333; }";
-    html += "h3 { color: #666; margin-top: 20px; border-bottom: 2px solid "
-            "#2196F3; padding-bottom: 5px; }";
-    html += "label { display: block; margin-top: 10px; font-weight: bold; }";
-    html += "input[type='number'] { width: 100%; padding: 8px; margin: 5px 0; "
-            "box-sizing: border-box; }";
-    html += "input[type='submit'] { background-color: #4CAF50; color: white; "
-            "padding: 14px 20px; margin: 20px 0; border: none; cursor: "
-            "pointer; width: 100%; font-size: 16px; border-radius: 4px; }";
-    html += "input[type='submit']:hover { background-color: #45a049; }";
-    html += "a { display: block; text-align: center; margin-top: 20px; color: "
-            "#2196F3; text-decoration: none; }";
-    html += ".row { display: flex; gap: 10px; }";
-    html += ".col { flex: 1; }";
-    html += "</style>";
+    html += getCommonStyle();
     html += "<script>";
     html += "function saveCal(event) {";
     html += "  event.preventDefault();";
@@ -892,13 +875,14 @@ void NetworkManager::loop() {
 
 String NetworkManager::getCommonStyle() {
   String css = "<style>";
+  css += "* { box-sizing: border-box; }";
   css += "body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; "
          "background-color: #121212; color: #e0e0e0; max-width: 600px; margin: "
          "0 auto; padding: 20px; font-size: 16px; line-height: 1.6; }";
   css += "h1, h2, h3 { color: #ffffff; text-align: center; }";
-  css += "h3 { border-bottom: 2px solid #29B6F6; padding-bottom: 10px; "
+  css += "h3 { border-bottom: 2px solid #07f67a8d; padding-bottom: 10px; "
          "margin-top: 30px; }";
-  css += "a { color: #29B6F6; text-decoration: none; }";
+  css += "a { color: #07f67a8d; text-decoration: none; }";
   css += "a:hover { text-decoration: underline; }";
   css += "input[type='text'], input[type='password'], input[type='number'], "
          "input[type='color'], input[type='datetime-local'], select { "
@@ -906,32 +890,33 @@ String NetworkManager::getCommonStyle() {
          "font-size: 16px; background-color: #2d2d2d; color: #fff; "
          "border: 1px solid #555; border-radius: 4px; }";
   css += "input[type='color'] { height: 50px; padding: 2px; }";
-  css += "input[type='submit'], button, .btn { background-color: #29B6F6; "
+  css += "input[type='submit'], button, .btn { background-color: #07f67a8d; "
          "color: #121212; font-weight: bold; padding: 14px 20px; margin: 8px "
          "0; border: none; cursor: pointer; width: 100%; font-size: 16px; "
          "border-radius: 4px; display: block; text-align: center; }";
   css += "input[type='submit']:hover, button:hover, .btn:hover { "
-         "background-color: #039BE5; text-decoration: none; }";
+         "background-color: #07f67ad8; text-decoration: none; }";
   css += ".btn-danger, .danger { background-color: #ef5350; color: white; }";
   css += ".btn-danger:hover, .danger:hover { background-color: #d32f2f; }";
   css += ".card { background-color: #1e1e1e; padding: 20px; border-radius: "
          "8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 20px; }";
   css += "label { display: block; margin-top: 15px; font-weight: bold; "
          "color: #b0bec5; }";
-  css += ".info { background-color: #263238; padding: 15px; border-left: 4px "
-         "solid #29B6F6; margin: 15px 0; font-size: 14px; border-radius: 0 4px "
-         "4px 0; }";
+  css +=
+      ".info { background-color: #263238; padding: 15px; border-left: 4px "
+      "solid #07f67a8d; margin: 15px 0; font-size: 14px; border-radius: 0 4px "
+      "4px 0; }";
   css += ".success { color: #66bb6a; } .error { color: #ef5350; }"; // Green/Red
   css += ".slider-container { display: flex; align-items: center; gap: 10px; }";
   css += ".slider-container input[type='range'] { flex: 1; accent-color: "
-         "#29B6F6; }";
+         "#07f67a8d; }";
   css += ".slider-value { min-width: 50px; text-align: right; font-weight: "
-         "bold; color: #29B6F6; }";
+         "bold; color: #07f67a8d; }";
   css += ".radio-group { margin: 10px 0; display: flex; gap: 20px; }";
   css += ".radio-group label { margin: 0; font-weight: normal; cursor: "
          "pointer; display: flex; align-items: center; gap: 5px; color: "
          "#e0e0e0; }";
-  css += "input[type='radio'] { accent-color: #29B6F6; width: 20px; height: "
+  css += "input[type='radio'] { accent-color: #07f67a8d; width: 20px; height: "
          "20px; }";
   css += "</style>";
   return css;
