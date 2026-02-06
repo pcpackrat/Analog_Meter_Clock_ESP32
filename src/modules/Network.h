@@ -24,6 +24,7 @@ private:
   bool _scanInProgress;
 
   void setupAP();
+  String getCommonStyle();
   void connectWiFi();
   void setupRoutes();
   void startAsyncScan();

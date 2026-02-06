@@ -28,7 +28,7 @@ void NetworkManager::begin() {
 
   setupRoutes();
   _server.begin();
-  Serial.println("Web server started");
+  Serial.println("Network Manager Initialized");
 }
 
 void NetworkManager::connectWiFi() {
@@ -209,20 +209,13 @@ void NetworkManager::setupRoutes() {
 
     String html = "<html><head><meta name='viewport' "
                   "content='width=device-width, initial-scale=1'>";
-    html += "<style>";
-    html += "body { font-family: Arial, sans-serif; max-width: 600px; margin: "
-            "0 auto; padding: 20px; font-size: 16px; text-align: center; }";
-    html += "h1 { color: #333; margin-bottom: 40px; }";
-    html += "a { display: block; background-color: #2196F3; color: white; "
-            "padding: 14px 20px; margin: 10px 0; text-decoration: none; "
-            "border-radius: 4px; font-size: 16px; }";
-    html += "a:hover { background-color: #0b7dda; }";
-    html += "</style></head><body>";
+    html += getCommonStyle();
+    html += "</head><body>";
     html += "<h1>Meter Clock Dashboard</h1>";
     html += "<h2 id='clock'>Loading time...</h2>";
-    html += "<a href='/wifi'>WiFi Configuration</a>";
-    html += "<a href='/settings'>Settings</a>";
-    html += "<a href='/calibration'>Meter Calibration</a>";
+    html += "<a href='/wifi' class='btn'>WiFi Configuration</a>";
+    html += "<a href='/settings' class='btn'>Settings</a>";
+    html += "<a href='/calibration' class='btn'>Meter Calibration</a>";
     html += "<script>setInterval(function() { fetch('/api/time').then(response "
             "=> response.text()).then(time => "
             "document.getElementById('clock').innerText = time).catch(err => "
@@ -234,30 +227,7 @@ void NetworkManager::setupRoutes() {
   _server.on("/wifi", HTTP_GET, [this](AsyncWebServerRequest *request) {
     String html = "<html><head><meta name='viewport' "
                   "content='width=device-width, initial-scale=1'>";
-    html += "<style>";
-    html += "body { font-family: Arial, sans-serif; max-width: 600px; margin: "
-            "0 auto; padding: 20px; font-size: 16px; }";
-    html += "h1 { text-align: center; color: #333; }";
-    html += "h3 { color: #666; margin-top: 30px; }";
-    html +=
-        "input[type='text'], input[type='password'] { width: 100%; padding: "
-        "12px; margin: 8px 0; box-sizing: border-box; font-size: 16px; }";
-    html += ".password-container { position: relative; }";
-    html += ".password-container input { padding-right: 45px; }";
-    html += ".toggle-password { position: absolute; right: 12px; top: 50%; "
-            "transform: translateY(-50%); cursor: pointer; font-size: 20px; "
-            "user-select: none; }";
-    html += "input[type='submit'], button { background-color: #4CAF50; color: "
-            "white; padding: 14px 20px; margin: 8px 0; border: none; cursor: "
-            "pointer; width: 100%; font-size: 16px; }";
-    html += "input[type='submit']:hover, button:hover { background-color: "
-            "#45a049; }";
-    html += ".danger { background-color: #f44336; } .danger:hover { "
-            "background-color: #da190b; }";
-    html += "a { display: block; text-align: center; margin-top: 20px; color: "
-            "#2196F3; text-decoration: none; font-size: 16px; }";
-    html += "p { line-height: 1.6; }";
-    html += "</style>";
+    html += getCommonStyle();
     html += "<script>";
     html += "function togglePassword() {";
     html += "  var x = document.getElementById('password');";
@@ -307,8 +277,8 @@ void NetworkManager::setupRoutes() {
       String html = "<html><head><meta name='viewport' "
                     "content='width=device-width, initial-scale=1'>";
       html += "<meta http-equiv='refresh' content='2;url=/wifi_status' />";
-      html += "<style>body { font-family: Arial, sans-serif; text-align: "
-              "center; padding: 50px; font-size: 18px; }</style>";
+      html += "<meta http-equiv='refresh' content='2;url=/wifi_status' />";
+      html += getCommonStyle();
       html += "</head><body>";
       html += "<h2>WiFi Saved!</h2>";
       html += "<p>Connecting to <strong>" + ssid + "</strong>...</p>";
@@ -329,12 +299,9 @@ void NetworkManager::setupRoutes() {
   _server.on("/wifi_status", HTTP_GET, [this](AsyncWebServerRequest *request) {
     String html = "<html><head><meta name='viewport' "
                   "content='width=device-width, initial-scale=1'>";
-    html += "<style>body { font-family: Arial, sans-serif; text-align: center; "
-            "padding: 50px; font-size: 18px; }";
-    html += ".success { color: #4CAF50; } .error { color: #f44336; }";
-    html += "a { display: inline-block; background-color: #2196F3; color: "
-            "white; padding: 14px 20px; margin: 20px 5px; text-decoration: "
-            "none; border-radius: 4px; }</style>";
+    html +=
+        "<meta name='viewport' content='width=device-width, initial-scale=1'>";
+    html += getCommonStyle();
     html += "</head><body>";
 
     if (WiFi.status() == WL_CONNECTED) {
@@ -361,8 +328,8 @@ void NetworkManager::setupRoutes() {
       html += "<p>Could not connect to <strong>" + _config.getSSID() +
               "</strong></p>";
       html += "<p>Please check your password and try again.</p>";
-      html += "<a href='/clear_wifi'>Clear WiFi</a>";
-      html += "<a href='/wifi'>Try Again</a>";
+      html += "<a href='/clear_wifi' class='btn btn-danger'>Clear WiFi</a>";
+      html += "<a href='/wifi' class='btn'>Try Again</a>";
       html += "</body></html>";
       request->send(200, "text/html", html);
 
@@ -379,8 +346,9 @@ void NetworkManager::setupRoutes() {
                   "content='width=device-width, initial-scale=1'>";
     html +=
         "<meta http-equiv='refresh' content='3;url=http://10.5.5.5/wifi' />";
-    html += "<style>body { font-family: Arial, sans-serif; text-align: center; "
-            "padding: 50px; font-size: 18px; }</style>";
+    html +=
+        "<meta http-equiv='refresh' content='3;url=http://10.5.5.5/wifi' />";
+    html += getCommonStyle();
     html += "</head><body>";
     html += "<h2>✓ WiFi Cleared!</h2>";
     html += "<p>Saved credentials have been deleted.</p>";
@@ -409,38 +377,7 @@ void NetworkManager::setupRoutes() {
 
     String html = "<html><head><meta name='viewport' "
                   "content='width=device-width, initial-scale=1'>";
-    html += "<style>";
-    html += "body { font-family: Arial, sans-serif; max-width: 600px; margin: "
-            "0 auto; padding: 20px; font-size: 16px; }";
-    html += "h1 { text-align: center; color: #333; }";
-    html += "h3 { color: #666; margin-top: 30px; border-bottom: 2px solid "
-            "#2196F3; padding-bottom: 5px; }";
-    html += "label { display: block; margin-top: 15px; font-weight: bold; "
-            "color: #555; }";
-    html +=
-        "input[type='text'], input[type='number'], input[type='color'], select "
-        "{ width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box; "
-        "font-size: 16px; border: 1px solid #ddd; border-radius: 4px; }";
-    html += "input[type='color'] { height: 50px; cursor: pointer; }";
-    html += "input[type='range'] { width: 100%; margin: 10px 0; }";
-    html += "input[type='radio'] { margin: 10px 5px 10px 0; }";
-    html += ".radio-group { margin: 10px 0; }";
-    html += ".radio-group label { display: inline; font-weight: normal; "
-            "margin-right: 20px; }";
-    html +=
-        ".slider-container { display: flex; align-items: center; gap: 10px; }";
-    html += ".slider-container input[type='range'] { flex: 1; }";
-    html += ".slider-value { min-width: 50px; text-align: right; font-weight: "
-            "bold; color: #2196F3; }";
-    html += "input[type='submit'] { background-color: #4CAF50; color: white; "
-            "padding: 14px 20px; margin: 20px 0 8px 0; border: none; cursor: "
-            "pointer; width: 100%; font-size: 16px; border-radius: 4px; }";
-    html += "input[type='submit']:hover { background-color: #45a049; }";
-    html += "a { display: block; text-align: center; margin-top: 20px; color: "
-            "#2196F3; text-decoration: none; font-size: 16px; }";
-    html += ".info { background-color: #e3f2fd; padding: 10px; border-left: "
-            "4px solid #2196F3; margin: 10px 0; font-size: 14px; }";
-    html += "</style>";
+    html += getCommonStyle();
     html += "<script>";
     html += "function updateSlider(sliderId, valueId) {";
     html += "  document.getElementById(valueId).textContent = "
@@ -494,6 +431,8 @@ void NetworkManager::setupRoutes() {
             "saveSettings(event)'>";
 
     // Time & Display Section
+    // Time & Display Section
+    html += "<div class='card'>";
     html += "<h3>Time & Display</h3>";
 
     // Primary Timezone Dropdown
@@ -580,6 +519,8 @@ void NetworkManager::setupRoutes() {
     html += "</div>";
 
     // LED Settings Section
+    // LED Settings Section
+    html += "</div><div class='card'>";
     html += "<h3>LED Lighting</h3>";
 
     // Day Mode
@@ -636,6 +577,8 @@ void NetworkManager::setupRoutes() {
     html += "</form>";
 
     // Firmware Update (AJAX)
+    // Firmware Update (AJAX)
+    html += "</div><div class='card'>";
     html += "<h3 id='fwHeader'>Firmware Update</h3>";
     html += "<div id='fwContainer'>";
     html += "<form id='fwForm'>";
@@ -644,9 +587,11 @@ void NetworkManager::setupRoutes() {
         "<button type='button' onclick='uploadFw()' style='background-color: "
         "#f44336; margin-top: 10px;'>Upload Firmware</button>";
     html += "</form>";
-    html += "</div>";
+    html += "</div></div>";       // Close fwContainer and card
+    html += "<div class='card'>"; // For progress
     html += "<div id='progress' style='display:none; margin-top:20px; "
             "font-weight:bold;'>Uploading... <span id='pct'>0</span>%</div>";
+    html += "</div>";
 
     html += "<script>";
     html += "function uploadFw() {";
@@ -941,4 +886,51 @@ void NetworkManager::loop() {
   if (_isAP) {
     _dnsServer.processNextRequest();
   }
+}
+
+String NetworkManager::getCommonStyle() {
+  String css = "<style>";
+  css += "body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; "
+         "background-color: #121212; color: #e0e0e0; max-width: 600px; margin: "
+         "0 auto; padding: 20px; font-size: 16px; line-height: 1.6; }";
+  css += "h1, h2, h3 { color: #ffffff; text-align: center; }";
+  css += "h3 { border-bottom: 2px solid #29B6F6; padding-bottom: 10px; "
+         "margin-top: 30px; }";
+  css += "a { color: #29B6F6; text-decoration: none; }";
+  css += "a:hover { text-decoration: underline; }";
+  css += "input[type='text'], input[type='password'], input[type='number'], "
+         "input[type='color'], input[type='datetime-local'], select { "
+         "width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box; "
+         "font-size: 16px; background-color: #2d2d2d; color: #fff; "
+         "border: 1px solid #555; border-radius: 4px; }";
+  css += "input[type='color'] { height: 50px; padding: 2px; }";
+  css += "input[type='submit'], button, .btn { background-color: #29B6F6; "
+         "color: #121212; font-weight: bold; padding: 14px 20px; margin: 8px "
+         "0; border: none; cursor: pointer; width: 100%; font-size: 16px; "
+         "border-radius: 4px; display: block; text-align: center; }";
+  css += "input[type='submit']:hover, button:hover, .btn:hover { "
+         "background-color: #039BE5; text-decoration: none; }";
+  css += ".btn-danger, .danger { background-color: #ef5350; color: white; }";
+  css += ".btn-danger:hover, .danger:hover { background-color: #d32f2f; }";
+  css += ".card { background-color: #1e1e1e; padding: 20px; border-radius: "
+         "8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 20px; }";
+  css += "label { display: block; margin-top: 15px; font-weight: bold; "
+         "color: #b0bec5; }";
+  css += ".info { background-color: #263238; padding: 15px; border-left: 4px "
+         "solid #29B6F6; margin: 15px 0; font-size: 14px; border-radius: 0 4px "
+         "4px 0; }";
+  css += ".success { color: #66bb6a; } .error { color: #ef5350; }"; // Green/Red
+  css += ".slider-container { display: flex; align-items: center; gap: 10px; }";
+  css += ".slider-container input[type='range'] { flex: 1; accent-color: "
+         "#29B6F6; }";
+  css += ".slider-value { min-width: 50px; text-align: right; font-weight: "
+         "bold; color: #29B6F6; }";
+  css += ".radio-group { margin: 10px 0; display: flex; gap: 20px; }";
+  css += ".radio-group label { margin: 0; font-weight: normal; cursor: "
+         "pointer; display: flex; align-items: center; gap: 5px; color: "
+         "#e0e0e0; }";
+  css += "input[type='radio'] { accent-color: #29B6F6; width: 20px; height: "
+         "20px; }";
+  css += "</style>";
+  return css;
 }
