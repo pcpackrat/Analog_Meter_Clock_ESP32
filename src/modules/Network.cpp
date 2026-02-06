@@ -201,6 +201,12 @@ void NetworkManager::setupRoutes() {
     Serial.print("[HTTP] GET / from ");
     Serial.println(request->client()->remoteIP());
 
+    // If we are not connected to WiFi (AP Mode), redirect to WiFi Config
+    if (WiFi.status() != WL_CONNECTED) {
+      request->redirect("/wifi");
+      return;
+    }
+
     String html = "<html><head><meta name='viewport' "
                   "content='width=device-width, initial-scale=1'>";
     html += "<style>";
