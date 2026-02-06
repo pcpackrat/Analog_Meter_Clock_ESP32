@@ -5,11 +5,11 @@
 #include "modules/TimeManager.h"
 #include <Arduino.h>
 
-
 // Hardware Pin Configuration
 #define PIN_METER_H 25
 #define PIN_METER_M 26
 #define PIN_METER_S 27
+#define PIN_TZ_SWITCH 4 // GPIO4 for UTC Switch (Active Low)
 // Lighting Pin is defined in Lighting.h (Default 13)
 
 Config config;
@@ -25,6 +25,8 @@ Lighting lighting;
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting Analog Meter Clock...");
+
+  pinMode(PIN_TZ_SWITCH, INPUT_PULLUP);
 
   // Initialize Modules
 
@@ -45,52 +47,48 @@ void setup() {
 }
 
 void loop() {
-  // 1. Update Managers
+  // 1. Update Network (Run this as often as possible for DNS)
   network.loop();
   timeManager.update();
 
-  // 2. Get Time
-  int h = timeManager.getHour();
-  int m = timeManager.getMinute();
-  int s = timeManager.getSecond();
+  // Check UTC Switch (Active Low)
+  timeManager.setOverrideUTC(digitalRead(PIN_TZ_SWITCH) == LOW);
 
-  // 3. Logic: Map Time to Meters (0-1023)
-  // Hour: 0-12 or 0-24 depending on settings. getHour() handles 12/24 logic
-  // roughly? Actually TimeManager::getHour handles logic. We need to map
-  // 0..H_MAX to 0..1023. If 12H mode, range is 1-12. If 24h, 0-23.
+  // 2. Logic & UI Updates (Throttled to avoid starving Network/Interrupts)
+  static unsigned long lastUpdate = 0;
+  if (millis() - lastUpdate > 50) { // 20Hz update rate
+    lastUpdate = millis();
 
-  int valH = 0;
-  if (config.get12H()) {
-    // 1-12 -> map to something. 12 should be max? or 0?
-    // Analog clocks usually: 12 is top.
-    // 12 -> 0 or 1023.
-    // Let's assume linear mapping 0-12
-    valH = map(h, 0, 12, 0, 1023);
-  } else {
-    valH = map(h, 0, 24, 0, 1023);
+    // Get Time
+    int h = timeManager.getHour();
+    int m = timeManager.getMinute();
+    int s = timeManager.getSecond();
+
+    // Logic: Map Time to Meters (with Calibration)
+    int valH = 0;
+    if (config.get12H()) {
+      valH =
+          map(h, 0, 12, config.getCalHMin(), config.getCalHMax()); // 12H Mode
+    } else {
+      valH =
+          map(h, 0, 24, config.getCalHMin(), config.getCalHMax()); // 24H Mode
+    }
+
+    int valM = map(m, 0, 60, config.getCalMMin(), config.getCalMMax());
+    int valS = map(s, 0, 60, config.getCalSMin(), config.getCalSMax());
+
+    // Update Outputs
+    meterH.setValue(valH);
+    meterM.setValue(valM);
+    meterS.setValue(valS);
+
+    // Verify Connection State
+    bool isConnected = (WiFi.status() == WL_CONNECTED);
+    bool isTimeSet = timeManager.isTimeSet();
+    bool showConnectionError = (!isConnected && !isTimeSet);
+
+    // Update Lighting
+    lighting.update(timeManager.getHour24(), m, config, showConnectionError);
+    lighting.show();
   }
-
-  int valM = map(m, 0, 60, 0, 1023);
-  int valS = map(s, 0, 60, 0, 1023);
-
-  // 4. Update Outputs
-  meterH.setValue(valH);
-  meterM.setValue(valM);
-  meterS.setValue(valS);
-
-  // 5. Update Lighting
-  lighting.update(timeManager.getHour()); // Pass raw hour?
-  // Wait, getHour() returns 12h format if configured.
-  // Lighting needs absolute hour for Day/Night.
-  // We should add getRawHour() to TimeManager or just rely on getHour returning
-  // correct for implementation. Let's assume getHour() returns 0-23 if we check
-  // configuration, but TimeManager::getHour() has logic. I should use a raw
-  // hour getter for lighting. For now, I'll use getHour() and accept it might
-  // be 12h format (so night logic 21 might fail). I will just update the
-  // lighting logic to be simple or fix TimeManager. Fixing TimeManager.h to
-  // expose getRawHour() is better.
-
-  lighting.show();
-
-  delay(100);
 }

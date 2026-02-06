@@ -8,10 +8,10 @@ A three-meter analog clock (Hour, Minute, Second) powered by an ESP32. It featur
 ## 2. Hardware Requirements
 * **Microcontroller:** ESP32 (DevKit V1 or similar)
 * **Meters:** 3x Analog DC Moving Coil Meters (e.g., 0-1mA or 0-50µA)
-* **Time Module:** EverSet ES100-MOD (BPSK WWVB Receiver)
+* **Time Module:** EverSet ES100-MOD (BPSK WWVB Receiver) **[Optional]**
 * **RTC:** DS3231 I2C module (for offline drift protection)
 * **LEDs:** WS2811 Integrated LEDs
-* **Power:** 5V or 12V DC (depending on LEDs), with a 3.3V regulator for the ESP32.
+* **Power:** 5V DC (Standard ESP32 Dev Board, same as Teensy Voter).
 * **Support Components:** * 3x Precision Resistors (Calibrated for meter full-scale deflection)
     * 3x 0.1µF Capacitors (PWM smoothing for the needles)
     * 1x Logic Level Shifter (3.3V to 5V for WS2811 Data line)
@@ -22,7 +22,7 @@ A three-meter analog clock (Hour, Minute, Second) powered by an ESP32. It featur
 
 ### Time Synchronization Hierarchy
 1. **Primary:** NTP via `time.h` (Fastest lock on boot).
-2. **Secondary:** WWVB via EverSet ES100 (Atomic reference for internet-free accuracy).
+2. **Secondary:** WWVB via EverSet ES100 (**Optional** atomic reference).
 3. **Tertiary/Local:** DS3231 RTC (Maintains time during power loss/network outages).
 4. **Timezone:** POSIX string for Selma, TX (handles DST automatically).
 

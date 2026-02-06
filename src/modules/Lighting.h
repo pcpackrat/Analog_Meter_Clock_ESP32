@@ -1,4 +1,5 @@
 #pragma once
+#include "Config.h"
 #include <FastLED.h>
 
 #define NUM_LEDS 3
@@ -11,8 +12,11 @@ public:
   Lighting();
   void begin();
   void setColor(int index, CRGB color);
+  void update(int hour, int minute, Config &config, bool isError = false);
   void show();
 
 private:
   CRGB _leds[NUM_LEDS];
+  CRGB _dayColor = CRGB::White;
+  CRGB _nightColor = CRGB::Purple;
 };
