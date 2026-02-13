@@ -134,7 +134,8 @@
  C:/Users/mikec/.platformio/packages/framework-arduinoespressif32/cores/esp32/io_pin_remap.h \
  C:/Users/mikec/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h \
  C:/Users/mikec/.platformio/packages/framework-arduinoespressif32/libraries/Preferences/src/Preferences.h \
- src/modules/Lighting.h .pio/libdeps/esp32dev/FastLED/src/FastLED.h \
+ src/modules/GlobalState.h src/modules/Lighting.h \
+ .pio/libdeps/esp32dev/FastLED/src/FastLED.h \
  .pio/libdeps/esp32dev/FastLED/src/fl/stdint.h \
  .pio/libdeps/esp32dev/FastLED/src/fl/dll.h \
  .pio/libdeps/esp32dev/FastLED/src/fl/force_inline.h \

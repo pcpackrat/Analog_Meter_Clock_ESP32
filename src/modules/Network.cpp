@@ -1,6 +1,8 @@
 #include "Network.h"
+#include "GlobalState.h"
 #include "TimeManager.h"
 #include <Update.h>
+
 #include <sys/time.h>
 
 extern TimeManager timeManager;
@@ -213,9 +215,11 @@ void NetworkManager::setupRoutes() {
     html += "</head><body>";
     html += "<h1>Meter Clock Dashboard</h1>";
     html += "<h2 id='clock'>Loading time...</h2>";
-    html += "<a href='/wifi' class='btn'>WiFi Configuration</a>";
-    html += "<a href='/settings' class='btn'>Settings</a>";
+    html += "<a href='/settings/time' class='btn'>Time Settings</a>";
+    html += "<a href='/settings/led' class='btn'>LED Lighting</a>";
     html += "<a href='/calibration' class='btn'>Meter Calibration</a>";
+    html += "<a href='/settings/system' class='btn'>Firmware</a>";
+    html += "<a href='/wifi' class='btn'>WiFi Configuration</a>";
     html += "<script>setInterval(function() { fetch('/api/time').then(response "
             "=> response.text()).then(time => "
             "document.getElementById('clock').innerText = time).catch(err => "
@@ -361,13 +365,163 @@ void NetworkManager::setupRoutes() {
     ESP.restart();
   });
 
-  _server.on("/settings", HTTP_GET, [this](AsyncWebServerRequest *request) {
-    String tz = _config.getTimezone();
-    String tz2 = _config.getTimezone2();
-    String ntp = _config.getNTP();
-    bool h12 = _config.get12H();
+  // =================================================================================
+  //  TIME & DISPLAY SETTINGS
+  // =================================================================================
+  _server.on(
+      "/settings/time", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        String tz = _config.getTimezone();
+        String tz2 = _config.getTimezone2();
+        String ntp = _config.getNTP();
+        bool h12 = _config.get12H();
+        bool useNTP = _config.getUseNTP();
 
-    // LED settings
+        String html = "<html><head><meta name='viewport' "
+                      "content='width=device-width, initial-scale=1'>";
+        html += getCommonStyle();
+        html += "<script>";
+        html += "function toggleTimeSource() {";
+        html += "  var useNTP = "
+                "document.querySelector('input[name=\"useNTP\"]:checked')."
+                "value === '1';";
+        html += "  document.getElementById('manualTimeDiv').style.display = "
+                "useNTP ? 'none' : 'block';";
+        html += "}";
+        html += "function syncBrowserTime() {";
+        html += "  var now = new Date();";
+        html += "  var offset = now.getTimezoneOffset() * 60000;";
+        html += "  var localIso = new Date(now - "
+                "offset).toISOString().slice(0, 16);";
+        html += "  document.getElementById('manualTime').value = localIso;";
+        html += "}";
+        html += "function saveTime(event) {";
+        html += "  event.preventDefault();";
+        html += "  fetch('/save_time', { method: 'POST', body: new "
+                "FormData(event.target) })";
+        html += "    .then(r => { if(r.ok) alert('Time Settings Saved!'); else "
+                "alert('Error!'); });";
+        html += "  return false;";
+        html += "}";
+        html += "</script></head><body>";
+
+        html += "<h1>Time Settings</h1>";
+        html += "<form onsubmit='return saveTime(event)'>";
+
+        // Timezone 1
+        html += "<label>Primary Timezone:</label><select name='timezone'>";
+        struct TZOption {
+          const char *name;
+          const char *posix;
+        };
+        TZOption timezones[] = {{"UTC", "UTC0"},
+                                {"Eastern", "EST5EDT,M3.2.0,M11.1.0"},
+                                {"Central", "CST6CDT,M3.2.0,M11.1.0"},
+                                {"Mountain", "MST7MDT,M3.2.0,M11.1.0"},
+                                {"Arizona", "MST7"},
+                                {"Pacific", "PST8PDT,M3.2.0,M11.1.0"},
+                                {"Alaska", "AKST9AKDT,M3.2.0,M11.1.0"},
+                                {"Hawaii", "HST10"},
+                                {"London", "GMT0BST,M3.5.0/1,M10.5.0"},
+                                {"Paris", "CET-1CEST,M3.5.0,M10.5.0/3"},
+                                {"Tokyo", "JST-9"},
+                                {"Sydney", "AEST-10AEDT,M10.1.0,M4.1.0/3"}};
+        for (auto &t : timezones) {
+          html += "<option value='" + String(t.posix) + "'" +
+                  (tz == t.posix ? " selected" : "") + ">" + t.name +
+                  "</option>";
+        }
+        html += "</select>";
+
+        // Timezone 2
+        html += "<label>Secondary Timezone (GPIO Switch):</label><select "
+                "name='timezone2'>";
+        for (auto &t : timezones) {
+          html += "<option value='" + String(t.posix) + "'" +
+                  (tz2 == t.posix ? " selected" : "") + ">" + t.name +
+                  "</option>";
+        }
+        html += "</select>";
+
+        // NTP Server
+        html +=
+            "<label>NTP Server:</label><input type='text' name='ntp' value='" +
+            ntp + "'>";
+
+        // Time Source
+        html += "<label>Time Source:</label><div class='radio-group'>";
+        html += "<label><input type='radio' name='useNTP' value='1'" +
+                String(useNTP ? " checked" : "") +
+                " onchange='toggleTimeSource()'> Automatic (NTP)</label>";
+        html += "<label><input type='radio' name='useNTP' value='0'" +
+                String(!useNTP ? " checked" : "") +
+                " onchange='toggleTimeSource()'> Manual</label>";
+        html += "</div>";
+
+        // Manual Time
+        html += "<div id='manualTimeDiv' style='display:" +
+                String(useNTP ? "none" : "block") + "'>";
+        html += "<label>Set Date & Time:</label><input type='datetime-local' "
+                "id='manualTime' name='manualTime'>";
+        html += "<button type='button' onclick='syncBrowserTime()' "
+                "style='margin-top:5px;'>Sync Browser Time</button></div>";
+
+        // Hour Format
+        html += "<label>Hour Format:</label><div class='radio-group'>";
+        html += "<label><input type='radio' name='h12' value='0'" +
+                String(!h12 ? " checked" : "") + "> 24-Hour</label>";
+        html += "<label><input type='radio' name='h12' value='1'" +
+                String(h12 ? " checked" : "") + "> 12-Hour</label>";
+        html += "</div>";
+
+        html += "<input type='submit' value='Save Time Settings'>";
+        html += "</form>";
+        html += "<a href='/'>&larr; Back to Dashboard</a></body></html>";
+        request->send(200, "text/html", html);
+      });
+
+  _server.on("/save_time", HTTP_POST, [this](AsyncWebServerRequest *request) {
+    if (request->hasArg("timezone"))
+      _config.saveTimezone(request->arg("timezone"));
+    if (request->hasArg("timezone2"))
+      _config.saveTimezone2(request->arg("timezone2"));
+    if (request->hasArg("ntp"))
+      _config.saveNTP(request->arg("ntp"));
+    if (request->hasArg("h12"))
+      _config.save12H(request->arg("h12") == "1");
+
+    if (request->hasArg("useNTP")) {
+      bool use = request->arg("useNTP") == "1";
+      _config.saveUseNTP(use);
+      timeManager.setUseNTP(use);
+    }
+
+    if (request->hasArg("manualTime") &&
+        request->arg("manualTime").length() > 0) {
+      String dtStr = request->arg("manualTime");
+      struct tm timeinfo;
+      int Y, M, D, h, m;
+      if (sscanf(dtStr.c_str(), "%d-%d-%dT%d:%d", &Y, &M, &D, &h, &m) == 5) {
+        timeinfo.tm_year = Y - 1900;
+        timeinfo.tm_mon = M - 1;
+        timeinfo.tm_mday = D;
+        timeinfo.tm_hour = h;
+        timeinfo.tm_min = m;
+        timeinfo.tm_sec = 0;
+        time_t ts = mktime(&timeinfo);
+        _config.saveManualTime(ts);
+        if (!_config.getUseNTP()) {
+          struct timeval tv = {ts, 0};
+          settimeofday(&tv, NULL);
+        }
+      }
+    }
+    request->send(200, "text/plain", "OK");
+  });
+
+  // =================================================================================
+  //  LED SETTINGS
+  // =================================================================================
+  _server.on("/settings/led", HTTP_GET, [this](AsyncWebServerRequest *request) {
     uint32_t dayColor = _config.getDayColor();
     uint32_t nightColor = _config.getNightColor();
     uint8_t dayBright = _config.getDayBrightness();
@@ -379,375 +533,150 @@ void NetworkManager::setupRoutes() {
                   "content='width=device-width, initial-scale=1'>";
     html += getCommonStyle();
     html += "<script>";
-    html += "function updateSlider(sliderId, valueId) {";
-    html += "  var val = document.getElementById(sliderId).value;";
-    html += "  var pct = Math.round(val * 100 / 255);";
-    html += "  document.getElementById(valueId).textContent = pct + '%';";
+    html += "function updateSlider(id, valId) {";
+    html += "  var val = document.getElementById(id).value;";
+    html += "  document.getElementById(valId).innerText = Math.round(val * 100 "
+            "/ 255) + '%';";
     html += "}";
-    html += "function toggleTimeSource() {";
-    html += "  var useNTP = "
-            "document.querySelector('input[name=\"useNTP\"]:checked').value "
-            "=== '1';";
-    html += "  document.getElementById('manualTimeDiv').style.display = useNTP "
-            "? 'none' : 'block';";
-    html += "}";
-    html += "function showToast(message) {";
-    html += "  var toast = document.createElement('div');";
-    html += "  toast.style.position = 'fixed';";
-    html += "  toast.style.bottom = '20px';";
-    html += "  toast.style.left = '50%';";
-    html += "  toast.style.transform = 'translateX(-50%)';";
-    html += "  toast.style.backgroundColor = '#333';";
-    html += "  toast.style.color = 'white';";
-    html += "  toast.style.padding = '12px 24px';";
-    html += "  toast.style.borderRadius = '4px';";
-    html += "  toast.style.zIndex = '1000';";
-    html += "  toast.textContent = message;";
-    html += "  document.body.appendChild(toast);";
-    html +=
-        "  setTimeout(function(){ document.body.removeChild(toast); }, 3000);";
-    html += "}";
-    html += "function saveSettings(event) {";
+    html += "function saveLed(event) {";
     html += "  event.preventDefault();";
-    html += "  var form = event.target;";
-    html += "  var data = new FormData(form);";
-    html += "  fetch(form.action, {";
-    html += "    method: form.method,";
-    html += "    body: data";
-    html += "  }).then(response => {";
-    html += "    if (response.ok) {";
-    html += "      showToast('Settings Saved Successfully!');";
-    html += "    } else {";
-    html += "      showToast('Error Saving Settings');";
-    html += "    }";
-    html += "  }).catch(error => {";
-    html += "    showToast('Connection Error');";
-    html += "  });";
+    html += "  fetch('/save_led', { method: 'POST', body: new "
+            "FormData(event.target) })";
+    html += "    .then(r => { if(r.ok) alert('LED Settings Saved!'); else "
+            "alert('Error!'); });";
     html += "  return false;";
     html += "}";
-    html += "</script>";
-    html += "</head><body>";
-    html += "<h1>Settings</h1>";
-    html += "<form action='/save_settings' method='POST' onsubmit='return "
-            "saveSettings(event)'>";
+    html += "</script></head><body>";
 
-    // Time & Display Section
-    // Time & Display Section
-    html += "<div class='card'>";
-    html += "<h3>Time & Display</h3>";
+    html += "<h1>LED Lighting</h1>";
+    html += "<form onsubmit='return saveLed(event)'>";
 
-    // Primary Timezone Dropdown
-    html += "<label for='timezone'>Primary Timezone:</label>";
-    html += "<select name='timezone' id='timezone'>";
-
-    struct TZOption {
-      const char *name;
-      const char *posix;
-    };
-    TZOption timezones[] = {
-        {"UTC (Coordinated Universal Time)", "UTC0"},
-        {"Eastern Time (New York)", "EST5EDT,M3.2.0,M11.1.0"},
-        {"Central Time (Chicago)", "CST6CDT,M3.2.0,M11.1.0"},
-        {"Mountain Time (Denver)", "MST7MDT,M3.2.0,M11.1.0"},
-        {"Arizona (No Daylight Saving)", "MST7"},
-        {"Pacific Time (Los Angeles)", "PST8PDT,M3.2.0,M11.1.0"},
-        {"Alaska Time (Anchorage)", "AKST9AKDT,M3.2.0,M11.1.0"},
-        {"Hawaii Time (Honolulu)", "HST10"},
-        {"GMT (London)", "GMT0BST,M3.5.0/1,M10.5.0"},
-        {"Central European (Paris)", "CET-1CEST,M3.5.0,M10.5.0/3"},
-        {"Japan (Tokyo)", "JST-9"},
-        {"Australia Eastern (Sydney)", "AEST-10AEDT,M10.1.0,M4.1.0/3"}};
-
-    for (int i = 0; i < 12; i++) {
-      html += "<option value='" + String(timezones[i].posix) + "'";
-      if (tz == String(timezones[i].posix))
-        html += " selected";
-      html += ">" + String(timezones[i].name) + "</option>";
-    }
-    html += "</select>";
-
-    // Secondary Timezone Dropdown
-    html += "<label for='timezone2'>Secondary Timezone:</label>";
-    html += "<select name='timezone2' id='timezone2'>";
-    for (int i = 0; i < 12; i++) {
-      html += "<option value='" + String(timezones[i].posix) + "'";
-      if (tz2 == String(timezones[i].posix))
-        html += " selected";
-      html += ">" + String(timezones[i].name) + "</option>";
-    }
-    html += "</select>";
-    html += "<div class='info'>Secondary timezone can be displayed on a second "
-            "meter or used for reference. GPIO switch: OPEN=primary, "
-            "CLOSED=secondary.</div>";
-
-    // NTP Server
-    html += "<label for='ntp'>NTP Server:</label>";
-    html += "<input type='text' name='ntp' id='ntp' value='" + ntp +
-            "' placeholder='pool.ntp.org'>";
-
-    // Time Source Selection
-    bool useNTP = _config.getUseNTP();
-    html += "<label>Time Source:</label>";
-    html += "<div class='radio-group'>";
-    html += "<label><input type='radio' name='useNTP' value='1'" +
-            String(useNTP ? " checked" : "") +
-            " onchange='toggleTimeSource()'> Use NTP (Automatic)</label>";
-    html += "<label><input type='radio' name='useNTP' value='0'" +
-            String(!useNTP ? " checked" : "") +
-            " onchange='toggleTimeSource()'> Manual Time</label>";
-    html += "</div>";
-
-    // Manual Time Input (hidden by default if NTP is selected)
-    html += "<div id='manualTimeDiv' style='display:" +
-            String(useNTP ? "none" : "block") + "'>";
-    html += "<label for='manualTime'>Set Date & Time:</label>";
-    html += "<input type='datetime-local' name='manualTime' id='manualTime'>";
-    html += "<button type='button' onclick='syncBrowserTime()' "
-            "style='background-color: #2196F3; margin-top: 5px;'>Sync with "
-            "Browser Time</button>";
+    // Day
+    char buf[10];
+    sprintf(buf, "#%06X", dayColor);
     html +=
-        "<div class='info'>Enter the current date and time. This will be used "
-        "instead of NTP synchronization.</div>";
-    html += "</div>";
+        "<label>Day Color:</label><input type='color' name='dayColor' value='" +
+        String(buf) + "'>";
 
-    // Hour Format
-    html += "<label>Hour Format:</label>";
-    html += "<div class='radio-group'>";
-    html += "<label><input type='radio' name='h12' value='0'" +
-            String(!h12 ? " checked" : "") + "> 24-Hour</label>";
-    html += "<label><input type='radio' name='h12' value='1'" +
-            String(h12 ? " checked" : "") + "> 12-Hour</label>";
-    html += "</div>";
+    html += "<label>Day Brightness:</label><div class='slider-container'>";
+    html += "<input type='range' id='db' name='dayBright' min='0' max='255' "
+            "value='" +
+            String(dayBright) + "' oninput='updateSlider(\"db\", \"dbv\")'>";
+    html += "<span class='slider-value' id='dbv'>" +
+            String(dayBright * 100 / 255) + "%</span></div>";
 
-    // LED Settings Section
-    // LED Settings Section
-    html += "</div><div class='card'>";
-    html += "<h3>LED Lighting</h3>";
+    // Night
+    sprintf(buf, "#%06X", nightColor);
+    html += "<label>Night Color:</label><input type='color' name='nightColor' "
+            "value='" +
+            String(buf) + "'>";
 
-    // Day Mode
-    html += "<label for='dayColor'>Day Color:</label>";
-    char dayColorHex[8];
-    sprintf(dayColorHex, "#%06X", dayColor);
-    html += "<input type='color' name='dayColor' id='dayColor' value='" +
-            String(dayColorHex) + "'>";
+    html += "<label>Night Brightness:</label><div class='slider-container'>";
+    html += "<input type='range' id='nb' name='nightBright' min='0' max='255' "
+            "value='" +
+            String(nightBright) + "' oninput='updateSlider(\"nb\", \"nbv\")'>";
+    html += "<span class='slider-value' id='nbv'>" +
+            String(nightBright * 100 / 255) +
+            "%</span></div>"; // Fixed % calculation
 
-    html += "<label for='dayBright'>Day Brightness:</label>";
-    html += "<div class='slider-container'>";
-    html += "<input type='range' name='dayBright' id='dayBright' min='0' "
-            "max='255' value='" +
-            String(dayBright) +
-            "' oninput='updateSlider(\"dayBright\", \"dayBrightVal\")'>";
-    html += "<span class='slider-value' id='dayBrightVal'>" +
-            String(dayBright * 100 / 255) + "%</span>";
-    html += "</div>";
+    // Schedule
+    char tBuf[6];
+    sprintf(tBuf, "%02d:%02d", nightStart, _config.getNightStartMinute());
+    html += "<label>Night Start (CST):</label><input type='time' "
+            "name='nightStart' value='" +
+            String(tBuf) + "'>";
 
-    // Night Mode
-    html += "<label for='nightColor'>Night Color:</label>";
-    char nightColorHex[8];
-    sprintf(nightColorHex, "#%06X", nightColor);
-    html += "<input type='color' name='nightColor' id='nightColor' value='" +
-            String(nightColorHex) + "'>";
+    sprintf(tBuf, "%02d:%02d", nightEnd, _config.getNightEndMinute());
+    html += "<label>Night End (CST):</label><input type='time' name='nightEnd' "
+            "value='" +
+            String(tBuf) + "'>";
 
-    html += "<label for='nightBright'>Night Brightness:</label>";
-    html += "<div class='slider-container'>";
-    html += "<input type='range' name='nightBright' id='nightBright' min='0' "
-            "max='255' value='" +
-            String(nightBright) +
-            "' oninput='updateSlider(\"nightBright\", \"nightBrightVal\")'>";
-    html += "<span class='slider-value' id='nightBrightVal'>" +
-            String(nightBright * 100 / 255) + "%</span>";
-    html += "</div>";
-
-    // Night Mode Times
-    html += "<label for='nightStart'>Night Mode Start(CST):</label>";
-    char nsBuf[6];
-    sprintf(nsBuf, "%02d:%02d", nightStart, _config.getNightStartMinute());
-    html += "<input type='time' name='nightStart' id='nightStart' value='" +
-            String(nsBuf) + "'>";
-
-    html += "<label for='nightEnd'>Night Mode End(CST):</label>";
-    char neBuf[6];
-    sprintf(neBuf, "%02d:%02d", nightEnd, _config.getNightEndMinute());
-    html += "<input type='time' name='nightEnd' id='nightEnd' value='" +
-            String(neBuf) + "'>";
-
-    html += "<div class='info'>Night mode automatically switches LED color and "
-            "brightness between the specified hours (24-hour format).</div>";
-
-    html += "<input type='submit' value='Save Settings'>";
+    html += "<div class='info'>Night mode activates between these times.</div>";
+    html += "<input type='submit' value='Save LED Settings'>";
     html += "</form>";
-
-    // Firmware Update (AJAX)
-    // Firmware Update (AJAX)
-    html += "</div><div class='card'>";
-    html += "<h3 id='fwHeader'>Firmware Update</h3>";
-    html += "<div id='fwContainer'>";
-    html += "<form id='fwForm'>";
-    html += "<input type='file' name='update' id='fwFile' accept='.bin'>";
-    html +=
-        "<button type='button' onclick='uploadFw()' style='background-color: "
-        "#f44336; margin-top: 10px;'>Upload Firmware</button>";
-    html += "</form>";
-    html += "</div></div>";       // Close fwContainer and card
-    html += "<div class='card'>"; // For progress
-    html += "<div id='progress' style='display:none; margin-top:20px; "
-            "font-weight:bold;'>Uploading... <span id='pct'>0</span>%</div>";
-    html += "</div>";
-
-    html += "<script>";
-    html += "function uploadFw() {";
-    html += "  var file = document.getElementById('fwFile').files[0];";
-    html += "  if(!file) { showToast('Select a file!'); return; }";
-    html += "  var fd = new FormData();";
-    html += "  fd.append('update', file);";
-    html += "  var xhr = new XMLHttpRequest();";
-    html += "  xhr.upload.addEventListener('progress', function(e) {";
-    html += "    if(e.lengthComputable) {";
-    html += "      var p = Math.round((e.loaded/e.total)*100);";
-    html += "      document.getElementById('progress').style.display='block';";
-    html += "      document.getElementById('pct').innerText = p;";
-    html +=
-        "      document.getElementById('fwContainer').style.display='none';";
-    html += "      if(p >= 100) {";
-    html += "        document.getElementById('progress').innerHTML = '<span "
-            "style=\"color:green\">Success! Rebooting...</span>';";
-    html +=
-        "        setTimeout(function(){ window.location.href='/'; }, 5000);";
-    html += "      }";
-    html += "    }";
-    html += "  }, false);";
-    // Ignore onload, we trust the 100% progress
-    html += "  xhr.onload = function() {";
-    html += "    if(this.status != 200) {";
-    html += "      console.log('Upload finished but status not 200 (likely "
-            "rebooted)');";
-    html += "    }";
-    html += "  };";
-    html += "  xhr.open('POST', '/update');";
-    html += "  xhr.send(fd);";
-    html += "}";
-    html += "</script>";
-
-    html += "<a href='/'>&larr; Back to Dashboard</a>";
-    html += "</body></html>";
+    html += "<a href='/'>&larr; Back to Dashboard</a></body></html>";
     request->send(200, "text/html", html);
   });
 
-  // Current Time API Endpoint
-  _server.on("/api/time", HTTP_GET, [](AsyncWebServerRequest *request) {
-    extern TimeManager timeManager;
-    request->send(200, "text/plain", timeManager.getFormattedTime());
+  _server.on("/save_led", HTTP_POST, [this](AsyncWebServerRequest *request) {
+    if (request->hasArg("dayColor")) {
+      String c = request->arg("dayColor");
+      c.replace("#", "");
+      _config.saveDayColor(strtoul(c.c_str(), NULL, 16));
+    }
+    if (request->hasArg("nightColor")) {
+      String c = request->arg("nightColor");
+      c.replace("#", "");
+      _config.saveNightColor(strtoul(c.c_str(), NULL, 16));
+    }
+    if (request->hasArg("dayBright"))
+      _config.saveDayBrightness(request->arg("dayBright").toInt());
+    if (request->hasArg("nightBright"))
+      _config.saveNightBrightness(request->arg("nightBright").toInt());
+
+    if (request->hasArg("nightStart")) {
+      String t = request->arg("nightStart");
+      int sep = t.indexOf(':');
+      if (sep > 0) {
+        _config.saveNightStart(t.substring(0, sep).toInt());
+        _config.saveNightStartMinute(t.substring(sep + 1).toInt());
+      }
+    }
+    if (request->hasArg("nightEnd")) {
+      String t = request->arg("nightEnd");
+      int sep = t.indexOf(':');
+      if (sep > 0) {
+        _config.saveNightEnd(t.substring(0, sep).toInt());
+        _config.saveNightEndMinute(t.substring(sep + 1).toInt());
+      }
+    }
+    request->send(200, "text/plain", "OK");
   });
 
-  _server.on("/test_save", HTTP_GET, [this](AsyncWebServerRequest *request) {
-    _config.saveNightStart(22);
-    _config.saveNightStartMinute(15);
-    String res = "Saved 22:15. Read back: ";
-    res += String(_config.getNightStart()) + ":" +
-           String(_config.getNightStartMinute());
-    request->send(200, "text/plain", res);
-  });
-
+  // =================================================================================
+  //  SYSTEM SETTINGS
+  // =================================================================================
   _server.on(
-      "/save_settings", HTTP_POST, [this](AsyncWebServerRequest *request) {
-        // Save time & display settings
-        if (request->hasArg("timezone"))
-          _config.saveTimezone(request->arg("timezone"));
-        if (request->hasArg("timezone2"))
-          _config.saveTimezone2(request->arg("timezone2"));
-        if (request->hasArg("ntp"))
-          _config.saveNTP(request->arg("ntp"));
-        if (request->hasArg("h12"))
-          _config.save12H(request->arg("h12") == "1");
+      "/settings/system", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        String html = "<html><head><meta name='viewport' "
+                      "content='width=device-width, initial-scale=1'>";
+        html += getCommonStyle();
+        html += "<script>";
+        html += "function uploadFw() {";
+        html += "  var file = document.getElementById('fwFile').files[0];";
+        html += "  if(!file) { alert('Select a file!'); return; }";
+        html += "  var fd = new FormData(); fd.append('update', file);";
+        html += "  var xhr = new XMLHttpRequest();";
+        html += "  xhr.upload.addEventListener('progress', function(e) {";
+        html += "    if(e.lengthComputable) {";
+        html += "      var p = Math.round((e.loaded/e.total)*100);";
+        html +=
+            "      document.getElementById('progress').style.display='block';";
+        html += "      document.getElementById('pct').innerText = p;";
+        html += "      if(p >= 100) {";
+        html += "        document.getElementById('progress').innerHTML "
+                "= '<span style=\"color:green\">Success! Rebooting...</span>';";
+        html += "        setTimeout(function(){ window.location.href='/'; }, "
+                "5000);";
+        html += "      }";
+        html += "    }";
+        html += "  }, false);";
+        html += "  xhr.open('POST', '/update'); xhr.send(fd);";
+        html += "}";
+        html += "</script></head><body>";
 
-        // Save time source selection
-        if (request->hasArg("useNTP")) {
-          bool use = request->arg("useNTP") == "1";
-          _config.saveUseNTP(use);
-          timeManager.setUseNTP(use);
-        }
+        html += "<h1>Firmware</h1>";
+        html += "<div class='card'><h3>Firmware Update</h3>";
+        html += "<input type='file' id='fwFile' accept='.bin'>";
+        html += "<button onclick='uploadFw()' style='background-color:#f44336; "
+                "margin-top:10px;'>Upload Firmware</button>";
+        html +=
+            "<div id='progress' style='display:none; margin-top:15px; "
+            "font-weight:bold;'>Uploading... <span id='pct'>0</span>%</div>";
+        html += "</div>";
 
-        // Save manual time if provided
-        if (request->hasArg("manualTime") &&
-            request->arg("manualTime").length() > 0) {
-          Serial.println("Manual Time Arg found: " +
-                         request->arg("manualTime"));
-          String dtStr = request->arg("manualTime");
-          struct tm timeinfo;
-          int year, month, day, hour, minute;
-          if (sscanf(dtStr.c_str(), "%d-%d-%dT%d:%d", &year, &month, &day,
-                     &hour, &minute) == 5) {
-            timeinfo.tm_year = year - 1900;
-            timeinfo.tm_mon = month - 1;
-            timeinfo.tm_mday = day;
-            timeinfo.tm_hour = hour;
-            timeinfo.tm_min = minute;
-            timeinfo.tm_sec = 0;
-            time_t timestamp = mktime(&timeinfo);
-            _config.saveManualTime(timestamp);
-
-            // Apply immediately if using Manual Time
-            if (!_config.getUseNTP()) {
-              struct timeval tv = {timestamp, 0};
-              settimeofday(&tv, NULL);
-              Serial.println("Manual time applied immediately");
-            }
-          }
-        }
-
-        // Save LED settings
-        if (request->hasArg("dayColor")) {
-          String colorStr = request->arg("dayColor");
-          colorStr.replace("#", "");
-          uint32_t color = strtoul(colorStr.c_str(), NULL, 16);
-          _config.saveDayColor(color);
-        }
-
-        if (request->hasArg("nightColor")) {
-          String colorStr = request->arg("nightColor");
-          colorStr.replace("#", "");
-          uint32_t color = strtoul(colorStr.c_str(), NULL, 16);
-          // Serial.printf("Saving Night Color: 0x%06X (from %s)\r\n", color,
-          // request->arg("nightColor").c_str());
-          _config.saveNightColor(color);
-        }
-
-        if (request->hasArg("dayBright"))
-          _config.saveDayBrightness(request->arg("dayBright").toInt());
-
-        if (request->hasArg("nightBright"))
-          _config.saveNightBrightness(request->arg("nightBright").toInt());
-
-        if (request->hasArg("nightStart")) {
-          String tStr = request->arg("nightStart");
-          int sep = tStr.indexOf(':');
-          if (sep > 0) {
-            int h = tStr.substring(0, sep).toInt();
-            int m = tStr.substring(sep + 1).toInt();
-            Serial.printf("Saving Night Start manually parsed: %d:%d\r\n", h,
-                          m);
-            _config.saveNightStart(h);
-            _config.saveNightStartMinute(m);
-          } else {
-            Serial.println("Failed to parse nightStart (no colon): " + tStr);
-          }
-        }
-
-        if (request->hasArg("nightEnd")) {
-          String tStr = request->arg("nightEnd");
-          int sep = tStr.indexOf(':');
-          if (sep > 0) {
-            int h = tStr.substring(0, sep).toInt();
-            int m = tStr.substring(sep + 1).toInt();
-            Serial.printf("Saving Night End manually parsed: %d:%d\r\n", h, m);
-            _config.saveNightEnd(h);
-            _config.saveNightEndMinute(m);
-          } else {
-            Serial.println("Failed to parse nightEnd (no colon): " + tStr);
-          }
-        }
-
-        request->send(200, "text/plain", "OK");
+        html += "<a href='/'>&larr; Back to Dashboard</a></body></html>";
+        request->send(200, "text/html", html);
       });
 
   _server.on("/calibration", HTTP_GET, [this](AsyncWebServerRequest *request) {
@@ -758,50 +687,79 @@ void NetworkManager::setupRoutes() {
     html += "function saveCal(event) {";
     html += "  event.preventDefault();";
     html += "  var form = event.target;";
-    html += "  var data = new FormData(form);";
+    html += "  var data = new URLSearchParams(new FormData(form));";
+    // Also send to save endpoint
     html += "  fetch(form.action, { method: form.method, body: data })";
-    html +=
-        "    .then(r => { if(r.ok) alert('Saved!'); else alert('Error'); })";
-    html += "    .catch(e => alert('Error'));";
+    html += "    .then(r => {";
+    html += "      if(r.ok) {";
+    html += "        alert('Saved!');";
+    html += "        var cb = document.getElementById('calMode');";
+    html += "        if(cb.checked) { cb.checked = false; toggleCalMode(cb); }";
+    html += "      } else { alert('Error: ' + r.statusText); }";
+    html += "    })";
+    html += "    .catch(e => alert('Error: ' + e));";
     html += "  return false;";
+    html += "}";
+
+    html += "function toggleCalMode(cb) {";
+    html += "  var fd = new FormData();";
+    html += "  fd.append('active', cb.checked ? '1' : '0');";
+    html += "  fetch('/api/calibration/mode', { method: 'POST', body: fd });";
+    html += "  document.getElementById('calControls').style.opacity = "
+            "cb.checked ? '1' : '0.5';";
+    html += "}";
+
+    html += "function previewCal(idx, val) {";
+    html += "  if(!document.getElementById('calMode').checked) return;";
+    html += "  var fd = new FormData();";
+    html += "  fd.append('idx', idx);";
+    html += "  fd.append('val', val);";
+    html +=
+        "  fetch('/api/calibration/preview', { method: 'POST', body: fd });";
     html += "}";
     html += "</script>";
     html += "</head><body>";
     html += "<h1>Meter Calibration</h1>";
-    html += "<form action='/save_calibration' method='POST' onsubmit='return "
-            "saveCal(event)'>";
 
-    html += "<h3>Hour Meter</h3>";
-    html += "<div class='row'>";
-    html += "<div class='col'><label>Min (0-1023)</label><input type='number' "
-            "name='calHMin' value='" +
-            String(_config.getCalHMin()) + "'></div>";
-    html += "<div class='col'><label>Max (0-1023)</label><input type='number' "
-            "name='calHMax' value='" +
-            String(_config.getCalHMax()) + "'></div>";
+    html += "<div class='card'>";
+    html += "<label class='switch'><input type='checkbox' id='calMode' "
+            "onchange='toggleCalMode(this)' " +
+            String(g_isCalibrationMode ? "checked" : "") +
+            "> Enable Calibration Mode</label>";
+    html += "<p class='small'>Enable this to stop the clock and set meters to "
+            "exact values.</p>";
     html += "</div>";
 
-    html += "<h3>Minute Meter</h3>";
-    html += "<div class='row'>";
-    html += "<div class='col'><label>Min (0-1023)</label><input type='number' "
-            "name='calMMin' value='" +
-            String(_config.getCalMMin()) + "'></div>";
-    html += "<div class='col'><label>Max (0-1023)</label><input type='number' "
-            "name='calMMax' value='" +
-            String(_config.getCalMMax()) + "'></div>";
+    html += "<form action='/save_calibration' method='POST' id='calControls' "
+            "onsubmit='return saveCal(event)'>";
+
+    // Helper macro for inputs
+    auto addInput = [&](String label, String name, int val, int idx) {
+      String s = "<div class='col'><label>" + label + "</label>";
+      s += "<input type='number' name='" + name + "' value='" + String(val) +
+           "' ";
+      s += "onfocus='previewCal(" + String(idx) + ", this.value)' ";
+      s += "oninput='previewCal(" + String(idx) + ", this.value)'>";
+      s += "</div>";
+      return s;
+    };
+
+    html += "<h3>Hour Meter</h3><div class='row'>";
+    html += addInput("Min (0)", "calHMin", _config.getCalHMin(), 0);
+    html += addInput("Max (12/24)", "calHMax", _config.getCalHMax(), 0);
     html += "</div>";
 
-    html += "<h3>Second Meter</h3>";
-    html += "<div class='row'>";
-    html += "<div class='col'><label>Min (0-1023)</label><input type='number' "
-            "name='calSMin' value='" +
-            String(_config.getCalSMin()) + "'></div>";
-    html += "<div class='col'><label>Max (0-1023)</label><input type='number' "
-            "name='calSMax' value='" +
-            String(_config.getCalSMax()) + "'></div>";
+    html += "<h3>Minute Meter</h3><div class='row'>";
+    html += addInput("Min (0)", "calMMin", _config.getCalMMin(), 1);
+    html += addInput("Max (60)", "calMMax", _config.getCalMMax(), 1);
     html += "</div>";
 
-    html += "<input type='submit' value='Save Calibration'>";
+    html += "<h3>Second Meter</h3><div class='row'>";
+    html += addInput("Min (0)", "calSMin", _config.getCalSMin(), 2);
+    html += addInput("Max (60)", "calSMax", _config.getCalSMax(), 2);
+    html += "</div>";
+
+    html += "<br><input type='submit' value='Save Calibration'>";
     html += "</form>";
     html += "<a href='/'>&larr; Back to Dashboard</a>";
     html += "</body></html>";
@@ -825,6 +783,38 @@ void NetworkManager::setupRoutes() {
                if (request->hasArg("calSMax"))
                  _config.saveCalSMax(request->arg("calSMax").toInt());
 
+               Serial.println("Calibration Saved"); // Debug
+               request->send(200, "text/plain", "OK");
+             });
+
+  // API: Calibration Mode Toggle
+  _server.on(
+      "/api/calibration/mode", HTTP_POST, [](AsyncWebServerRequest *request) {
+        if (request->hasArg("active")) {
+          bool active = (request->arg("active") == "1");
+          g_isCalibrationMode = active;
+          Serial.print("Calibration Mode Toggled: ");
+          Serial.println(active ? "ON" : "OFF");
+
+          // Reset overrides when mode changes
+          g_calOverrideValues[0] = -1;
+          g_calOverrideValues[1] = -1;
+          g_calOverrideValues[2] = -1;
+        }
+        request->send(200, "text/plain", g_isCalibrationMode ? "1" : "0");
+      });
+
+  // API: Calibration Preview
+  _server.on("/api/calibration/preview", HTTP_POST,
+             [](AsyncWebServerRequest *request) {
+               if (g_isCalibrationMode && request->hasArg("idx") &&
+                   request->hasArg("val")) {
+                 int idx = request->arg("idx").toInt();
+                 int val = request->arg("val").toInt();
+                 if (idx >= 0 && idx <= 2) {
+                   g_calOverrideValues[idx] = val;
+                 }
+               }
                request->send(200, "text/plain", "OK");
              });
 
@@ -865,6 +855,21 @@ void NetworkManager::setupRoutes() {
           }
         }
       });
+
+  // Current Time API Endpoint
+  _server.on("/api/time", HTTP_GET, [](AsyncWebServerRequest *request) {
+    extern TimeManager timeManager;
+    request->send(200, "text/plain", timeManager.getFormattedTime());
+  });
+
+  _server.on("/test_save", HTTP_GET, [this](AsyncWebServerRequest *request) {
+    _config.saveNightStart(22);
+    _config.saveNightStartMinute(15);
+    String res = "Saved 22:15. Read back: ";
+    res += String(_config.getNightStart()) + ":" +
+           String(_config.getNightStartMinute());
+    request->send(200, "text/plain", res);
+  });
 }
 
 void NetworkManager::loop() {

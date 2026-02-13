@@ -209,7 +209,8 @@
  C:/Users/mikec/.platformio/packages/framework-arduinoespressif32/cores/esp32/StreamString.h \
  src/modules/Config.h \
  C:/Users/mikec/.platformio/packages/framework-arduinoespressif32/libraries/Preferences/src/Preferences.h \
- src/modules/TimeManager.h .pio/libdeps/esp32dev/RTClib/src/RTClib.h \
+ src/modules/GlobalState.h src/modules/TimeManager.h \
+ .pio/libdeps/esp32dev/RTClib/src/RTClib.h \
  .pio/libdeps/esp32dev/Adafruit\ BusIO/Adafruit_I2CDevice.h \
  C:/Users/mikec/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src/Wire.h \
  C:/Users/mikec/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h \

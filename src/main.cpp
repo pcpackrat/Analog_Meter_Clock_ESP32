@@ -1,9 +1,14 @@
 #include "modules/Config.h"
+#include "modules/GlobalState.h"
 #include "modules/Lighting.h"
 #include "modules/Meter.h"
 #include "modules/Network.h"
 #include "modules/TimeManager.h"
 #include <Arduino.h>
+
+// Global State Definitions
+bool g_isCalibrationMode = false;
+int g_calOverrideValues[3] = {-1, -1, -1};
 
 // Hardware Pin Configuration
 #define PIN_METER_H 25
@@ -66,16 +71,28 @@ void loop() {
 
     // Logic: Map Time to Meters (with Calibration)
     int valH = 0;
-    if (config.get12H()) {
-      valH =
-          map(h, 0, 12, config.getCalHMin(), config.getCalHMax()); // 12H Mode
-    } else {
-      valH =
-          map(h, 0, 24, config.getCalHMin(), config.getCalHMax()); // 24H Mode
-    }
+    int valM = 0;
+    int valS = 0;
 
-    int valM = map(m, 0, 60, config.getCalMMin(), config.getCalMMax());
-    int valS = map(s, 0, 60, config.getCalSMin(), config.getCalSMax());
+    if (g_isCalibrationMode) {
+      // Direct Calibration Override
+      if (millis() % 1000 == 0)
+        Serial.println("In Calibration Mode Loop"); // Debug
+      valH = (g_calOverrideValues[0] != -1) ? g_calOverrideValues[0] : 0;
+      valM = (g_calOverrideValues[1] != -1) ? g_calOverrideValues[1] : 0;
+      valS = (g_calOverrideValues[2] != -1) ? g_calOverrideValues[2] : 0;
+    } else {
+      // Standard Time Mode
+      if (config.get12H()) {
+        valH =
+            map(h, 0, 12, config.getCalHMin(), config.getCalHMax()); // 12H Mode
+      } else {
+        valH =
+            map(h, 0, 24, config.getCalHMin(), config.getCalHMax()); // 24H Mode
+      }
+      valM = map(m, 0, 60, config.getCalMMin(), config.getCalMMax());
+      valS = map(s, 0, 60, config.getCalSMin(), config.getCalSMax());
+    }
 
     // Update Outputs
     meterH.setValue(valH);
@@ -91,4 +108,4 @@ void loop() {
     lighting.update(timeManager.getHour24(), m, config, showConnectionError);
     lighting.show();
   }
-}
+} // End loop
