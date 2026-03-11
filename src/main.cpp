@@ -15,6 +15,7 @@ int g_calOverrideValues[3] = {-1, -1, -1};
 #define PIN_METER_M 26
 #define PIN_METER_S 27
 #define PIN_TZ_SWITCH 4 // GPIO4 for UTC Switch (Active Low)
+#define PIN_TZ_GND 19   // GPIO19 as Software Ground for Switch
 // Lighting Pin is defined in Lighting.h (Default 13)
 
 Config config;
@@ -32,6 +33,8 @@ void setup() {
   Serial.println("Starting Analog Meter Clock...");
 
   pinMode(PIN_TZ_SWITCH, INPUT_PULLUP);
+  pinMode(PIN_TZ_GND, OUTPUT);
+  digitalWrite(PIN_TZ_GND, LOW); // Acts as a Ground pin
 
   // Initialize Modules
 
@@ -49,6 +52,16 @@ void setup() {
 
   // 4. Time
   timeManager.begin(); // Syncs NTP/RTC
+}
+
+// Piecewise linear mapping
+long mapPiecewise(long x, long in_min, long in_mid, long in_max, long out_min,
+                  long out_mid, long out_max) {
+  if (x <= in_mid) {
+    return map(x, in_min, in_mid, out_min, out_mid);
+  } else {
+    return map(x, in_mid, in_max, out_mid, out_max);
+  }
 }
 
 void loop() {
@@ -82,22 +95,24 @@ void loop() {
       valM = (g_calOverrideValues[1] != -1) ? g_calOverrideValues[1] : 0;
       valS = (g_calOverrideValues[2] != -1) ? g_calOverrideValues[2] : 0;
     } else {
-      // Standard Time Mode
+      // Standard Time Mode with Piecewise Linear Mapping
       if (config.get12H()) {
-        valH =
-            map(h, 0, 12, config.getCalHMin(), config.getCalHMax()); // 12H Mode
+        valH = mapPiecewise(h, 0, 6, 12, config.getCalHMin(),
+                            config.getCalHMid(), config.getCalHMax());
       } else {
-        valH =
-            map(h, 0, 24, config.getCalHMin(), config.getCalHMax()); // 24H Mode
+        valH = mapPiecewise(h, 0, 12, 24, config.getCalHMin(),
+                            config.getCalHMid(), config.getCalHMax());
       }
-      valM = map(m, 0, 60, config.getCalMMin(), config.getCalMMax());
-      valS = map(s, 0, 60, config.getCalSMin(), config.getCalSMax());
+      valM = mapPiecewise(m, 0, 30, 60, config.getCalMMin(),
+                          config.getCalMMid(), config.getCalMMax());
+      valS = mapPiecewise(s, 0, 30, 60, config.getCalSMin(),
+                          config.getCalSMid(), config.getCalSMax());
     }
 
-    // Update Outputs
-    meterH.setValue(valH);
-    meterM.setValue(valM);
-    meterS.setValue(valS);
+    // Update Outputs (Target)
+    meterH.setTarget(valH);
+    meterM.setTarget(valM);
+    meterS.setTarget(valS);
 
     // Verify Connection State
     bool isConnected = (WiFi.status() == WL_CONNECTED);
@@ -108,4 +123,9 @@ void loop() {
     lighting.update(timeManager.getHour24(), m, config, showConnectionError);
     lighting.show();
   }
+
+  // Fast loop for smooth ramping
+  meterH.update();
+  meterM.update();
+  meterS.update();
 } // End loop

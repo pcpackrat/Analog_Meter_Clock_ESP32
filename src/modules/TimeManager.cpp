@@ -1,6 +1,7 @@
 #include "TimeManager.h"
 #include "esp_sntp.h"
 #include <WiFi.h>
+#include <Wire.h>
 #include <sys/time.h>
 #include <time.h>
 
@@ -87,6 +88,7 @@ void TimeManager::begin() {
   }
 
   // Setup RTC
+  Wire.begin(5, 18); // Custom Pins: SDA=5, SCL=18
   if (_rtc.begin()) {
     _rtcFound = true;
     Serial.println("RTC Found\r\n");
@@ -114,7 +116,7 @@ void TimeManager::update() {
     if (timeinfo.tm_year > (2020 - 1900)) {
       // We have valid time.
       // Update RTC every hour
-      if (millis() - _lastRTCUpdate > 3600000) {
+      if (_lastRTCUpdate == 0 || millis() - _lastRTCUpdate > 3600000) {
         syncRTCToSystem();
         _lastRTCUpdate = millis();
       }

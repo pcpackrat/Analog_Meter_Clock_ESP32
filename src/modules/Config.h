@@ -62,15 +62,24 @@ public:
   uint16_t getCalHMax();
   void saveCalHMax(uint16_t val);
 
+  uint16_t getCalHMid();
+  void saveCalHMid(uint16_t val);
+
   uint16_t getCalMMin();
   void saveCalMMin(uint16_t val);
   uint16_t getCalMMax();
   void saveCalMMax(uint16_t val);
 
+  uint16_t getCalMMid();
+  void saveCalMMid(uint16_t val);
+
   uint16_t getCalSMin();
   void saveCalSMin(uint16_t val);
   uint16_t getCalSMax();
   void saveCalSMax(uint16_t val);
+
+  uint16_t getCalSMid();
+  void saveCalSMid(uint16_t val);
 
 private:
   Preferences _prefs;
@@ -100,4 +109,7 @@ private:
   uint16_t _calMMax;
   uint16_t _calSMin;
   uint16_t _calSMax;
+  uint16_t _calHMid;
+  uint16_t _calMMid;
+  uint16_t _calSMid;
 };

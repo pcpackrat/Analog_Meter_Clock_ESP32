@@ -29,7 +29,13 @@ void Config::begin() {
   _calMMin = _prefs.getUShort("calMMin", 0);
   _calMMax = _prefs.getUShort("calMMax", 1023);
   _calSMin = _prefs.getUShort("calSMin", 0);
+  _calSMin = _prefs.getUShort("calSMin", 0);
   _calSMax = _prefs.getUShort("calSMax", 1023);
+
+  // Load Mid Calibration (Default 512 approx half)
+  _calHMid = _prefs.getUShort("calHMid", 512);
+  _calMMid = _prefs.getUShort("calMMid", 512);
+  _calSMid = _prefs.getUShort("calSMid", 512);
 }
 
 String Config::getSSID() { return _ssid; }
@@ -145,6 +151,12 @@ void Config::saveCalHMax(uint16_t val) {
   _prefs.putUShort("calHMax", val);
 }
 
+uint16_t Config::getCalHMid() { return _calHMid; }
+void Config::saveCalHMid(uint16_t val) {
+  _calHMid = val;
+  _prefs.putUShort("calHMid", val);
+}
+
 uint16_t Config::getCalMMin() { return _calMMin; }
 void Config::saveCalMMin(uint16_t val) {
   _calMMin = val;
@@ -157,6 +169,12 @@ void Config::saveCalMMax(uint16_t val) {
   _prefs.putUShort("calMMax", val);
 }
 
+uint16_t Config::getCalMMid() { return _calMMid; }
+void Config::saveCalMMid(uint16_t val) {
+  _calMMid = val;
+  _prefs.putUShort("calMMid", val);
+}
+
 uint16_t Config::getCalSMin() { return _calSMin; }
 void Config::saveCalSMin(uint16_t val) {
   _calSMin = val;
@@ -167,4 +185,10 @@ uint16_t Config::getCalSMax() { return _calSMax; }
 void Config::saveCalSMax(uint16_t val) {
   _calSMax = val;
   _prefs.putUShort("calSMax", val);
+}
+
+uint16_t Config::getCalSMid() { return _calSMid; }
+void Config::saveCalSMid(uint16_t val) {
+  _calSMid = val;
+  _prefs.putUShort("calSMid", val);
 }

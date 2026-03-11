@@ -2,6 +2,7 @@
 #include "GlobalState.h"
 #include "TimeManager.h"
 #include <Update.h>
+#include <ESPmDNS.h>
 
 #include <sys/time.h>
 
@@ -28,12 +29,20 @@ void NetworkManager::begin() {
     Serial.println(WiFi.localIP());
   }
 
+  if (MDNS.begin("meterclock")) {
+    Serial.println("mDNS responder started: http://meterclock.local");
+    MDNS.addService("http", "tcp", 80);
+  } else {
+    Serial.println("Error setting up mDNS responder!");
+  }
+
   setupRoutes();
   _server.begin();
   Serial.println("Network Manager Initialized");
 }
 
 void NetworkManager::connectWiFi() {
+  WiFi.setHostname("MeterClock");
   WiFi.mode(WIFI_STA);
   String ssid = _config.getSSID();
   String pass = _config.getWifiPass();
@@ -317,10 +326,9 @@ void NetworkManager::setupRoutes() {
       html += "<p>The device will restart in 5 seconds.</p>";
       html += "<p>After restart, reconnect your phone/tablet to <strong>" +
               _config.getSSID() + "</strong></p>";
-      html += "<p>Then access the clock at: <strong>http://" +
+      html += "<p>Then access the clock at: <strong>http://meterclock.local</strong> or <strong>http://" +
               WiFi.localIP().toString() + "</strong></p>";
-      html += "<meta http-equiv='refresh' content='5;url=http://" +
-              WiFi.localIP().toString() + "/' />";
+      html += "<meta http-equiv='refresh' content='8;url=http://meterclock.local/' />";
       html += "</body></html>";
       request->send(200, "text/html", html);
 
@@ -746,16 +754,19 @@ void NetworkManager::setupRoutes() {
 
     html += "<h3>Hour Meter</h3><div class='row'>";
     html += addInput("Min (0)", "calHMin", _config.getCalHMin(), 0);
+    html += addInput("Mid (6/12)", "calHMid", _config.getCalHMid(), 0);
     html += addInput("Max (12/24)", "calHMax", _config.getCalHMax(), 0);
     html += "</div>";
 
     html += "<h3>Minute Meter</h3><div class='row'>";
     html += addInput("Min (0)", "calMMin", _config.getCalMMin(), 1);
+    html += addInput("Mid (30)", "calMMid", _config.getCalMMid(), 1);
     html += addInput("Max (60)", "calMMax", _config.getCalMMax(), 1);
     html += "</div>";
 
     html += "<h3>Second Meter</h3><div class='row'>";
     html += addInput("Min (0)", "calSMin", _config.getCalSMin(), 2);
+    html += addInput("Mid (30)", "calSMid", _config.getCalSMid(), 2);
     html += addInput("Max (60)", "calSMax", _config.getCalSMax(), 2);
     html += "</div>";
 
@@ -770,16 +781,22 @@ void NetworkManager::setupRoutes() {
              [this](AsyncWebServerRequest *request) {
                if (request->hasArg("calHMin"))
                  _config.saveCalHMin(request->arg("calHMin").toInt());
+               if (request->hasArg("calHMid"))
+                 _config.saveCalHMid(request->arg("calHMid").toInt());
                if (request->hasArg("calHMax"))
                  _config.saveCalHMax(request->arg("calHMax").toInt());
 
                if (request->hasArg("calMMin"))
                  _config.saveCalMMin(request->arg("calMMin").toInt());
+               if (request->hasArg("calMMid"))
+                 _config.saveCalMMid(request->arg("calMMid").toInt());
                if (request->hasArg("calMMax"))
                  _config.saveCalMMax(request->arg("calMMax").toInt());
 
                if (request->hasArg("calSMin"))
                  _config.saveCalSMin(request->arg("calSMin").toInt());
+               if (request->hasArg("calSMid"))
+                 _config.saveCalSMid(request->arg("calSMid").toInt());
                if (request->hasArg("calSMax"))
                  _config.saveCalSMax(request->arg("calSMax").toInt());
 
