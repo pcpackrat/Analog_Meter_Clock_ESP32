@@ -383,6 +383,7 @@ void NetworkManager::setupRoutes() {
         String ntp = _config.getNTP();
         bool h12 = _config.get12H();
         bool useNTP = _config.getUseNTP();
+        bool smoothSec = _config.getSmoothSeconds();
 
         String html = "<html><head><meta name='viewport' "
                       "content='width=device-width, initial-scale=1'>";
@@ -481,6 +482,14 @@ void NetworkManager::setupRoutes() {
                 String(h12 ? " checked" : "") + "> 12-Hour</label>";
         html += "</div>";
 
+        // Second Hand Movement
+        html += "<label>Second Hand Movement:</label><div class='radio-group'>";
+        html += "<label><input type='radio' name='smoothSec' value='0'" +
+                String(!smoothSec ? " checked" : "") + "> Ticking</label>";
+        html += "<label><input type='radio' name='smoothSec' value='1'" +
+                String(smoothSec ? " checked" : "") + "> Sweeping</label>";
+        html += "</div>";
+
         html += "<input type='submit' value='Save Time Settings'>";
         html += "</form>";
         html += "<a href='/'>&larr; Back to Dashboard</a></body></html>";
@@ -496,6 +505,8 @@ void NetworkManager::setupRoutes() {
       _config.saveNTP(request->arg("ntp"));
     if (request->hasArg("h12"))
       _config.save12H(request->arg("h12") == "1");
+    if (request->hasArg("smoothSec"))
+      _config.saveSmoothSeconds(request->arg("smoothSec") == "1");
 
     if (request->hasArg("useNTP")) {
       bool use = request->arg("useNTP") == "1";

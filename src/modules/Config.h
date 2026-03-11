@@ -22,6 +22,9 @@ public:
   bool get12H();
   void save12H(bool is12h);
 
+  bool getSmoothSeconds();
+  void saveSmoothSeconds(bool smooth);
+
   // Time Source
   bool getUseNTP(); // true = NTP, false = Manual
   void saveUseNTP(bool useNTP);
@@ -91,6 +94,7 @@ private:
   String _tz2;
   String _ntp;
   bool _is12h;
+  bool _smoothSeconds;
   bool _useNTP;
   time_t _manualTime;
   uint32_t _dayColor;

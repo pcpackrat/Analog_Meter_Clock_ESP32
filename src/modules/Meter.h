@@ -6,7 +6,7 @@ public:
   Meter(int pin, int channel);
   void begin();
   void setValue(int value);  // Immediate set
-  void setTarget(int value); // Smooth ramp target
+  void setTarget(float value); // Smooth ramp target
   void update();             // Call frequently to update ramp
 
 private:
@@ -16,6 +16,6 @@ private:
   const int _resolution = 10;
 
   float _currentVal = 0;
-  int _targetVal = 0;
+  float _targetVal = 0;
   unsigned long _lastUpdate = 0;
 };

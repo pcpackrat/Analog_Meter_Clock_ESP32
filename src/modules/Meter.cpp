@@ -21,11 +21,11 @@ void Meter::setValue(int value) {
   ledcWrite(_channel, value);
 }
 
-void Meter::setTarget(int value) {
-  if (value > 1023)
-    value = 1023;
-  if (value < 0)
-    value = 0;
+void Meter::setTarget(float value) {
+  if (value > 1023.0f)
+    value = 1023.0f;
+  if (value < 0.0f)
+    value = 0.0f;
   _targetVal = value;
 }
 

@@ -189,6 +189,17 @@ int TimeManager::getSecond() {
   return 0;
 }
 
+float TimeManager::getExactSecond() {
+  struct timeval tv;
+  if (gettimeofday(&tv, NULL) == 0) {
+    struct tm timeinfo;
+    if (localtime_r(&tv.tv_sec, &timeinfo)) {
+      return (float)timeinfo.tm_sec + (tv.tv_usec / 1000000.0f);
+    }
+  }
+  return 0.0f;
+}
+
 String TimeManager::getFormattedTime() {
   struct tm timeinfo;
   if (getLocalTime(&timeinfo, 0)) {

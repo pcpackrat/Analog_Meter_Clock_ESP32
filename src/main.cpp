@@ -55,12 +55,12 @@ void setup() {
 }
 
 // Piecewise linear mapping
-long mapPiecewise(long x, long in_min, long in_mid, long in_max, long out_min,
-                  long out_mid, long out_max) {
+float mapPiecewise(float x, float in_min, float in_mid, float in_max, float out_min,
+                  float out_mid, float out_max) {
   if (x <= in_mid) {
-    return map(x, in_min, in_mid, out_min, out_mid);
+    return (x - in_min) * (out_mid - out_min) / (in_mid - in_min) + out_min;
   } else {
-    return map(x, in_mid, in_max, out_mid, out_max);
+    return (x - in_mid) * (out_max - out_mid) / (in_max - in_mid) + out_mid;
   }
 }
 
@@ -78,14 +78,14 @@ void loop() {
     lastUpdate = millis();
 
     // Get Time
-    int h = timeManager.getHour();
-    int m = timeManager.getMinute();
-    int s = timeManager.getSecond();
+    float h = timeManager.getHour();
+    float m = timeManager.getMinute();
+    float s = config.getSmoothSeconds() ? timeManager.getExactSecond() : timeManager.getSecond();
 
     // Logic: Map Time to Meters (with Calibration)
-    int valH = 0;
-    int valM = 0;
-    int valS = 0;
+    float valH = 0;
+    float valM = 0;
+    float valS = 0;
 
     if (g_isCalibrationMode) {
       // Direct Calibration Override

@@ -12,6 +12,7 @@ void Config::begin() {
   _tz2 = _prefs.getString("tz2", "UTC0");
   _ntp = _prefs.getString("ntp", "pool.ntp.org");
   _is12h = _prefs.getBool("12h", true);
+  _smoothSeconds = _prefs.getBool("smoothSec", false);
   _useNTP = _prefs.getBool("useNTP", true);
   _manualTime = _prefs.getULong64("manualTime", 0);
   _dayColor = _prefs.getUInt("dayColor", 0xFFFFFF);
@@ -64,6 +65,12 @@ bool Config::get12H() { return _is12h; }
 void Config::save12H(bool is12h) {
   _is12h = is12h;
   _prefs.putBool("12h", is12h);
+}
+
+bool Config::getSmoothSeconds() { return _smoothSeconds; }
+void Config::saveSmoothSeconds(bool smooth) {
+  _smoothSeconds = smooth;
+  _prefs.putBool("smoothSec", smooth);
 }
 
 // Time Source

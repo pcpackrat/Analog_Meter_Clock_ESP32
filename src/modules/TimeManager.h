@@ -16,6 +16,7 @@ public:
   int getHour24();
   int getMinute();
   int getSecond();
+  float getExactSecond();
   String getFormattedTime();
   bool isTimeSet();
 
