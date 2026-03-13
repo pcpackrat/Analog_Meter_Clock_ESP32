@@ -685,6 +685,10 @@ void NetworkManager::setupRoutes() {
         html += "</script></head><body>";
 
         html += "<h1>Firmware</h1>";
+        html += "<div class='card'><h3>Current Firmware</h3>";
+        html += "<p><strong>Build Date:</strong> " + String(__DATE__) + "</p>";
+        html += "<p><strong>Build Time:</strong> " + String(__TIME__) + "</p>";
+        html += "</div>";
         html += "<div class='card'><h3>Firmware Update</h3>";
         html += "<input type='file' id='fwFile' accept='.bin'>";
         html += "<button onclick='uploadFw()' style='background-color:#f44336; "

@@ -1,0 +1,4 @@
+bblanchon/ArduinoJson @ ^6.21.3
+fastled/FastLED @ ^3.6.0
+https://github.com/me-no-dev/ESPAsyncWebServer.git
+adafruit/RTClib @ ^2.1.1

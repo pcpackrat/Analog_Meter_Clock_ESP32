@@ -88,8 +88,9 @@ void TimeManager::begin() {
   }
 
   // Setup RTC
+  delay(10);
   Wire.begin(5, 18); // Custom Pins: SDA=5, SCL=18
-  if (_rtc.begin()) {
+  if (_rtc.begin(&Wire)) {
     _rtcFound = true;
     Serial.println("RTC Found\r\n");
     if (_rtc.lostPower()) {
