@@ -18,8 +18,6 @@ public:
   int getSecond();
   float getExactSecond();
 
-  String getEffectiveTimezone(String tz, bool disableDST);
-
   String getFormattedTime();
   bool isTimeSet();
   bool isSecondaryTzActive() const;

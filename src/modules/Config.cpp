@@ -12,8 +12,6 @@ void Config::begin() {
   _tz2 = _prefs.getString("tz2", "UTC0");
   _ntp = _prefs.getString("ntp", "pool.ntp.org");
   _is12h = _prefs.getBool("12h", true);
-  _disableDST = _prefs.getBool("disDST", false);
-  _disableDST2 = _prefs.getBool("disDST2", false);
   _smoothSeconds = _prefs.getBool("smoothSec", false);
   _useNTP = _prefs.getBool("useNTP", true);
   _manualTime = _prefs.getULong64("manualTime", 0);
@@ -30,9 +28,9 @@ void Config::begin() {
   _nightStartMin = _prefs.getUChar("nightStartMin", 0);
   _nightEnd = _prefs.getUChar("nightEnd", 7);
   _nightEndMin = _prefs.getUChar("nightEndMin", 0);
-  _nightStart2 = _prefs.getUChar("nightStart2", 21);
+  _nightStart2 = _prefs.getUChar("nightStart2", 2);
   _nightStartMin2 = _prefs.getUChar("nightStartMin2", 0);
-  _nightEnd2 = _prefs.getUChar("nightEnd2", 7);
+  _nightEnd2 = _prefs.getUChar("nightEnd2", 13);
   _nightEndMin2 = _prefs.getUChar("nightEndMin2", 0);
 
   // Load Calibration (Default 0-1023)
@@ -40,7 +38,6 @@ void Config::begin() {
   _calHMax = _prefs.getUShort("calHMax", 1023);
   _calMMin = _prefs.getUShort("calMMin", 0);
   _calMMax = _prefs.getUShort("calMMax", 1023);
-  _calSMin = _prefs.getUShort("calSMin", 0);
   _calSMin = _prefs.getUShort("calSMin", 0);
   _calSMax = _prefs.getUShort("calSMax", 1023);
 
@@ -78,12 +75,6 @@ void Config::save12H(bool is12h) {
   _prefs.putBool("12h", is12h);
 }
 
-bool Config::getDisableDST() { return _disableDST; }
-void Config::saveDisableDST(bool disable) {
-  _disableDST = disable;
-  _prefs.putBool("disDST", disable);
-}
-
 bool Config::getSmoothSeconds() { return _smoothSeconds; }
 void Config::saveSmoothSeconds(bool smooth) {
   _smoothSeconds = smooth;
@@ -108,12 +99,6 @@ String Config::getTimezone2() { return _tz2; }
 void Config::saveTimezone2(String tz) {
   _tz2 = tz;
   _prefs.putString("tz2", tz);
-}
-
-bool Config::getDisableDST2() { return _disableDST2; }
-void Config::saveDisableDST2(bool disable) {
-  _disableDST2 = disable;
-  _prefs.putBool("disDST2", disable);
 }
 
 // LED Day/Night Settings
@@ -141,9 +126,7 @@ void Config::saveDayColorSecond(uint32_t color) {
   _prefs.putUInt("dayColorS", color);
 }
 
-uint32_t Config::getNightColor() {
-  return _nightColor;
-}
+uint32_t Config::getNightColor() { return _nightColor; }
 void Config::saveNightColor(uint32_t color) {
   _nightColor = color;
   _prefs.putUInt("nightColor", color);

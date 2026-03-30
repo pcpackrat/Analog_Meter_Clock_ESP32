@@ -18,5 +18,5 @@ public:
 private:
   CRGB _leds[NUM_LEDS];
   CRGB _dayColor = CRGB::White;
-  CRGB _nightColor = CRGB::Purple;
+  CRGB _nightColor = CRGB::Red;
 };

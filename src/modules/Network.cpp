@@ -1,8 +1,8 @@
 #include "Network.h"
 #include "GlobalState.h"
 #include "TimeManager.h"
-#include <Update.h>
 #include <ESPmDNS.h>
+#include <Update.h>
 
 #include <sys/time.h>
 
@@ -135,21 +135,21 @@ void NetworkManager::setupAP() {
 
 String NetworkManager::getWiFiScanHTML() {
   // WiFi scanning disabled - causes watchdog timeout in AP mode
-  return "<p><strong>WiFi scanning is not available.</strong></p>"
-         "<p>Please manually enter your network SSID below.</p>";
+  return "";
 }
 
 String NetworkManager::getTzAbbrev(String posix) {
   String abbrev = "";
-  for(unsigned int i=0; i<posix.length(); i++) {
+  for (unsigned int i = 0; i < posix.length(); i++) {
     char c = posix[i];
-    if(c >= 'A' && c <= 'Z') {
+    if (c >= 'A' && c <= 'Z') {
       abbrev += c;
     } else {
       break;
     }
   }
-  if (abbrev == "") return "Local";
+  if (abbrev == "")
+    return "Local";
   return abbrev;
 }
 
@@ -261,10 +261,10 @@ void NetworkManager::setupRoutes() {
     html += "  var icon = document.getElementById('toggleIcon');";
     html += "  if (x.type === 'password') {";
     html += "    x.type = 'text';";
-    html += "    icon.innerHTML = 'Hide';";
+    html += "    icon.innerHTML = 'Hide Password';";
     html += "  } else {";
     html += "    x.type = 'password';";
-    html += "    icon.innerHTML = 'Show';";
+    html += "    icon.innerHTML = 'Show Password';";
     html += "  }";
     html += "}";
     html += "</script>";
@@ -272,9 +272,7 @@ void NetworkManager::setupRoutes() {
     html += "<h1>WiFi Configuration</h1>";
     html += getWiFiScanHTML();
     html += "<h3>Connect to Network</h3>";
-    if (_config.getSSID() != "") {
-      html += "<p>Currently saved network: <strong>" + _config.getSSID() + "</strong></p>";
-    }
+
     html += "<form action='/save_wifi' method='POST'>";
     html += "<input type='text' name='ssid' placeholder='Network Name (SSID)' "
             "required><br>";
@@ -290,6 +288,10 @@ void NetworkManager::setupRoutes() {
     html += "<form action='/clear_wifi' method='POST'>";
     html +=
         "<input type='submit' value='Clear WiFi Credentials' class='danger'>";
+    if (_config.getSSID() != "") {
+      html += "<p>Currently saved network: <strong>" + _config.getSSID() +
+              "</strong></p>";
+    }
     html += "</form>";
     html += "<a href='/'>&larr; Back to Dashboard</a>";
     html += "</body></html>";
@@ -343,9 +345,11 @@ void NetworkManager::setupRoutes() {
       html += "<p>The device will restart in 5 seconds.</p>";
       html += "<p>After restart, reconnect your phone/tablet to <strong>" +
               _config.getSSID() + "</strong></p>";
-      html += "<p>Then access the clock at: <strong>http://meterclock.local</strong> or <strong>http://" +
+      html += "<p>Then access the clock at: "
+              "<strong>http://meterclock.local</strong> or <strong>http://" +
               WiFi.localIP().toString() + "</strong></p>";
-      html += "<meta http-equiv='refresh' content='8;url=http://meterclock.local/' />";
+      html += "<meta http-equiv='refresh' "
+              "content='8;url=http://meterclock.local/' />";
       html += "</body></html>";
       request->send(200, "text/html", html);
 
@@ -401,8 +405,6 @@ void NetworkManager::setupRoutes() {
         bool h12 = _config.get12H();
         bool useNTP = _config.getUseNTP();
         bool smoothSec = _config.getSmoothSeconds();
-        bool disDST = _config.getDisableDST();
-        bool disDST2 = _config.getDisableDST2();
 
         String html = "<html><head><meta name='viewport' "
                       "content='width=device-width, initial-scale=1'>";
@@ -433,10 +435,14 @@ void NetworkManager::setupRoutes() {
         html += "</script></head><body>";
 
         html += "<h1>Time Settings</h1>";
+        html += "<p class='info' style='font-size: 0.85em; margin-bottom: "
+                "15px;'>Daylight Saving Time is handled automatically based on "
+                "your time zone selection.</p>";
+
         html += "<form onsubmit='return saveTime(event)'>";
 
         // Timezone 1
-        html += "<label>Primary Timezone:</label><select name='timezone'>";
+        html += "<label>Primary Time Zone:</label><select name='timezone'>";
         struct TZOption {
           const char *name;
           const char *posix;
@@ -452,17 +458,25 @@ void NetworkManager::setupRoutes() {
                                 {"London", "GMT0BST,M3.5.0/1,M10.5.0"},
                                 {"Paris", "CET-1CEST,M3.5.0,M10.5.0/3"},
                                 {"Tokyo", "JST-9"},
-                                {"Sydney", "AEST-10AEDT,M10.1.0,M4.1.0/3"}};
+                                {"Sydney", "AEST-10AEDT,M10.1.0,M4.1.0/3"},
+                                {"UTC -1", "UTC1"},
+                                {"UTC -2", "UTC2"},
+                                {"UTC -3", "UTC3"},
+                                {"UTC -4", "UTC4"},
+                                {"UTC -5", "UTC5"},
+                                {"UTC -6", "UTC6"},
+                                {"UTC -7", "UTC7"},
+                                {"UTC -8", "UTC8"},
+                                {"UTC -9", "UTC9"}};
         for (auto &t : timezones) {
           html += "<option value='" + String(t.posix) + "'" +
                   (tz == t.posix ? " selected" : "") + ">" + t.name +
                   "</option>";
         }
         html += "</select>";
-        html += "<label style='margin-bottom: 10px; font-weight: normal; display: flex; align-items: center;'><input type='checkbox' name='disableDST' value='1'" + String(disDST ? " checked" : "") + " style='margin-right: 5px; width: auto;'> Disable DST for Primary</label>";
 
         // Timezone 2
-        html += "<label>Secondary Timezone (GPIO Switch):</label><select "
+        html += "<label>Secondary Time Zone (TZ Switch):</label><select "
                 "name='timezone2'>";
         for (auto &t : timezones) {
           html += "<option value='" + String(t.posix) + "'" +
@@ -470,9 +484,6 @@ void NetworkManager::setupRoutes() {
                   "</option>";
         }
         html += "</select>";
-        html += "<label style='margin-bottom: 15px; font-weight: normal; display: flex; align-items: center;'><input type='checkbox' name='disableDST2' value='1'" + String(disDST2 ? " checked" : "") + " style='margin-right: 5px; width: auto;'> Disable DST for Secondary</label>";
-        
-        html += "<p class='info' style='font-size: 0.85em; margin-bottom: 15px;'>Daylight Saving Time is handled automatically based on your timezone selection.</p>";
 
         // NTP Server
         html +=
@@ -530,9 +541,6 @@ void NetworkManager::setupRoutes() {
       _config.save12H(request->arg("h12") == "1");
     if (request->hasArg("smoothSec"))
       _config.saveSmoothSeconds(request->arg("smoothSec") == "1");
-      
-    _config.saveDisableDST(request->hasArg("disableDST") && request->arg("disableDST") == "1");
-    _config.saveDisableDST2(request->hasArg("disableDST2") && request->arg("disableDST2") == "1");
 
     if (request->hasArg("useNTP")) {
       bool use = request->arg("useNTP") == "1";
@@ -586,94 +594,144 @@ void NetworkManager::setupRoutes() {
     String tzAbbrev1 = getTzAbbrev(_config.getTimezone());
     String tzAbbrev2 = getTzAbbrev(_config.getTimezone2());
 
-    String html = "<html><head><meta name='viewport' content='width=device-width, initial-scale=1'>";
+    String html = "<html><head><meta name='viewport' "
+                  "content='width=device-width, initial-scale=1'>";
     html += getCommonStyle();
     html += "<style>";
-    html += "  #individualColors { display: " + String(sharedColors ? "none" : "block") + "; padding-left: 10px; border-left: 2px solid #ccc; margin-left: 5px; }";
-    html += "  #sharedColorsDiv { display: " + String(sharedColors ? "block" : "none") + "; }";
+    html += "  #individualColors { display: " +
+            String(sharedColors ? "none" : "block") +
+            "; padding-left: 10px; border-left: 2px solid #ccc; margin-left: "
+            "5px; }";
+    html += "  #sharedColorsDiv { display: " +
+            String(sharedColors ? "block" : "none") + "; }";
     html += "</style>";
     html += "<script>";
     html += "function toggleColorFields() {";
     html += "  var chk = document.getElementById('sharedChk').checked;";
-    html += "  document.getElementById('sharedColorsDiv').style.display = chk ? 'block' : 'none';";
-    html += "  document.getElementById('individualColors').style.display = chk ? 'none' : 'block';";
+    html += "  document.getElementById('sharedColorsDiv').style.display = chk "
+            "? 'block' : 'none';";
+    html += "  document.getElementById('individualColors').style.display = chk "
+            "? 'none' : 'block';";
     html += "}";
     html += "function updateSlider(id, valId) {";
     html += "  var val = document.getElementById(id).value;";
-    html += "  document.getElementById(valId).innerText = Math.round(val * 100 / 255) + '%';";
+    html += "  document.getElementById(valId).innerText = Math.round(val * 100 "
+            "/ 255) + '%';";
     html += "}";
     html += "function saveLed(event) {";
     html += "  event.preventDefault();";
-    html += "  fetch('/save_led', { method: 'POST', body: new FormData(event.target) })";
-    html += "    .then(r => { if(r.ok) alert('LED Settings Saved!'); else alert('Error!'); });";
+    html += "  fetch('/save_led', { method: 'POST', body: new "
+            "FormData(event.target) })";
+    html += "    .then(r => { if(r.ok) alert('LED Settings Saved!'); else "
+            "alert('Error!'); });";
     html += "  return false;";
     html += "}";
     html += "</script></head><body>";
 
     html += "<h1>LED Lighting</h1>";
     html += "<form onsubmit='return saveLed(event)'>";
-    
+
     // Day Brightness
     html += "<label>Day Brightness:</label><div class='slider-container'>";
-    html += "<input type='range' id='db' name='dayBright' min='0' max='255' value='" + String(dayBright) + "' oninput='updateSlider(\"db\", \"dbv\")'>";
-    html += "<span class='slider-value' id='dbv'>" + String(dayBright * 100 / 255) + "%</span></div>";
+    html += "<input type='range' id='db' name='dayBright' min='0' max='255' "
+            "value='" +
+            String(dayBright) + "' oninput='updateSlider(\"db\", \"dbv\")'>";
+    html += "<span class='slider-value' id='dbv'>" +
+            String(dayBright * 100 / 255) + "%</span></div>";
 
     // Night Brightness
     html += "<label>Night Brightness:</label><div class='slider-container'>";
-    html += "<input type='range' id='nb' name='nightBright' min='0' max='255' value='" + String(nightBright) + "' oninput='updateSlider(\"nb\", \"nbv\")'>";
-    html += "<span class='slider-value' id='nbv'>" + String(nightBright * 100 / 255) + "%</span></div>";
+    html += "<input type='range' id='nb' name='nightBright' min='0' max='255' "
+            "value='" +
+            String(nightBright) + "' oninput='updateSlider(\"nb\", \"nbv\")'>";
+    html += "<span class='slider-value' id='nbv'>" +
+            String(nightBright * 100 / 255) + "%</span></div>";
 
     html += "<h3>Meter Colors</h3>";
-    html += "<label><input type='checkbox' id='sharedChk' name='sharedColors' value='1' onchange='toggleColorFields()'" + String(sharedColors ? " checked" : "") + "> Use same color for all meters</label><br>";
+    html += "<label><input type='checkbox' id='sharedChk' name='sharedColors' "
+            "value='1' onchange='toggleColorFields()'" +
+            String(sharedColors ? " checked" : "") +
+            "> Use same color for all meters</label><br>";
 
     char buf[10];
 
     // Shared Colors Div
     html += "<div id='sharedColorsDiv'>";
     sprintf(buf, "#%06X", dayColor);
-    html += "<label>Day Color:</label><input type='color' name='dayColor' value='" + String(buf) + "'>";
+    html +=
+        "<label>Day Color:</label><input type='color' name='dayColor' value='" +
+        String(buf) + "'>";
     sprintf(buf, "#%06X", nightColor);
-    html += "<label>Night Color:</label><input type='color' name='nightColor' value='" + String(buf) + "'>";
+    html += "<label>Night Color:</label><input type='color' name='nightColor' "
+            "value='" +
+            String(buf) + "'>";
     html += "</div>";
 
     // Individual Colors Div
     html += "<div id='individualColors'>";
     html += "<h4>Hour Meter</h4>";
     sprintf(buf, "#%06X", dayColor); // We reuse dayColor for Hour
-    html += "<label>Day:</label><input type='color' name='dayColorH' value='" + String(buf) + "'>";
+    html += "<label>Day:</label><input type='color' name='dayColorH' value='" +
+            String(buf) + "'>";
     sprintf(buf, "#%06X", nightColor); // We reuse nightColor for Hour
-    html += "<label>Night:</label><input type='color' name='nightColorH' value='" + String(buf) + "'>";
+    html +=
+        "<label>Night:</label><input type='color' name='nightColorH' value='" +
+        String(buf) + "'>";
 
     html += "<h4>Minute Meter</h4>";
     sprintf(buf, "#%06X", dayColorM);
-    html += "<label>Day:</label><input type='color' name='dayColorM' value='" + String(buf) + "'>";
+    html += "<label>Day:</label><input type='color' name='dayColorM' value='" +
+            String(buf) + "'>";
     sprintf(buf, "#%06X", nightColorM);
-    html += "<label>Night:</label><input type='color' name='nightColorM' value='" + String(buf) + "'>";
+    html +=
+        "<label>Night:</label><input type='color' name='nightColorM' value='" +
+        String(buf) + "'>";
 
     html += "<h4>Second Meter</h4>";
     sprintf(buf, "#%06X", dayColorS);
-    html += "<label>Day:</label><input type='color' name='dayColorS' value='" + String(buf) + "'>";
+    html += "<label>Day:</label><input type='color' name='dayColorS' value='" +
+            String(buf) + "'>";
     sprintf(buf, "#%06X", nightColorS);
-    html += "<label>Night:</label><input type='color' name='nightColorS' value='" + String(buf) + "'>";
+    html +=
+        "<label>Night:</label><input type='color' name='nightColorS' value='" +
+        String(buf) + "'>";
     html += "</div>";
 
     // Schedule
     html += "<h3>Night Schedule</h3>";
+    html += "<style>.tz-row { display: flex; align-items: center; gap: 15px; "
+            "margin-bottom: 15px; }";
+    html += ".tz-row > div { display: flex; align-items: center; gap: 5px; "
+            "}</style>";
     char tBuf[6];
-    
-    // Primary Timezone Schedule
+    html += "<div class='info'>Night mode activates between these times "
+            "automatically switching dynamically with Time Zone switch.</div>";
+    // Primary Time Zone Schedule
+    html += "<h4>Primary Time Zone (" + tzAbbrev1 + ")</h4>";
+    html += "<div class='tz-row'>";
     sprintf(tBuf, "%02d:%02d", nightStart, _config.getNightStartMinute());
-    html += "<label>Night Start (" + tzAbbrev1 + "):</label><input type='time' name='nightStart' value='" + String(tBuf) + "'>";
+    html += "<div><label style='margin:0; width:auto;'>Start:</label><input "
+            "type='time' name='nightStart' value='" +
+            String(tBuf) + "'></div>";
     sprintf(tBuf, "%02d:%02d", nightEnd, _config.getNightEndMinute());
-    html += "<label>Night End (" + tzAbbrev1 + "):</label><input type='time' name='nightEnd' value='" + String(tBuf) + "'>";
+    html += "<div><label style='margin:0; width:auto;'>End:</label><input "
+            "type='time' name='nightEnd' value='" +
+            String(tBuf) + "'></div>";
+    html += "</div>";
 
-    // Secondary Timezone Schedule
+    // Secondary Time Zone Schedule
+    html += "<h4>Secondary Time Zone (" + tzAbbrev2 + ")</h4>";
+    html += "<div class='tz-row'>";
     sprintf(tBuf, "%02d:%02d", nightStart2, _config.getNightStartMinute2());
-    html += "<label>Secondary Night Start (" + tzAbbrev2 + "):</label><input type='time' name='nightStart2' value='" + String(tBuf) + "'>";
+    html += "<div><label style='margin:0; width:auto;'>Start:</label><input "
+            "type='time' name='nightStart2' value='" +
+            String(tBuf) + "'></div>";
     sprintf(tBuf, "%02d:%02d", nightEnd2, _config.getNightEndMinute2());
-    html += "<label>Secondary Night End (" + tzAbbrev2 + "):</label><input type='time' name='nightEnd2' value='" + String(tBuf) + "'>";
+    html += "<div><label style='margin:0; width:auto;'>End:</label><input "
+            "type='time' name='nightEnd2' value='" +
+            String(tBuf) + "'></div>";
+    html += "</div>";
 
-    html += "<div class='info'>Night mode activates between these times automatically switching dynamically with GPIO Timezone switch.</div>";
     html += "<input type='submit' value='Save LED Settings'>";
     html += "</form>";
     html += "<a href='/'>&larr; Back to Dashboard</a></body></html>";
@@ -681,7 +739,8 @@ void NetworkManager::setupRoutes() {
   });
 
   _server.on("/save_led", HTTP_POST, [this](AsyncWebServerRequest *request) {
-    bool sharedColors = request->hasArg("sharedColors") && request->arg("sharedColors") == "1";
+    bool sharedColors =
+        request->hasArg("sharedColors") && request->arg("sharedColors") == "1";
     _config.saveUseSharedColors(sharedColors);
 
     auto parseColor = [](String c) {
@@ -689,15 +748,24 @@ void NetworkManager::setupRoutes() {
       return strtoul(c.c_str(), NULL, 16);
     };
 
-    if (request->hasArg("dayColor")) _config.saveDayColor(parseColor(request->arg("dayColor")));
-    if (request->hasArg("dayColorH")) _config.saveDayColor(parseColor(request->arg("dayColorH"))); // Hour shares same var
-    if (request->hasArg("dayColorM")) _config.saveDayColorMinute(parseColor(request->arg("dayColorM")));
-    if (request->hasArg("dayColorS")) _config.saveDayColorSecond(parseColor(request->arg("dayColorS")));
+    if (request->hasArg("dayColor"))
+      _config.saveDayColor(parseColor(request->arg("dayColor")));
+    if (request->hasArg("dayColorH"))
+      _config.saveDayColor(
+          parseColor(request->arg("dayColorH"))); // Hour shares same var
+    if (request->hasArg("dayColorM"))
+      _config.saveDayColorMinute(parseColor(request->arg("dayColorM")));
+    if (request->hasArg("dayColorS"))
+      _config.saveDayColorSecond(parseColor(request->arg("dayColorS")));
 
-    if (request->hasArg("nightColor")) _config.saveNightColor(parseColor(request->arg("nightColor")));
-    if (request->hasArg("nightColorH")) _config.saveNightColor(parseColor(request->arg("nightColorH")));
-    if (request->hasArg("nightColorM")) _config.saveNightColorMinute(parseColor(request->arg("nightColorM")));
-    if (request->hasArg("nightColorS")) _config.saveNightColorSecond(parseColor(request->arg("nightColorS")));
+    if (request->hasArg("nightColor"))
+      _config.saveNightColor(parseColor(request->arg("nightColor")));
+    if (request->hasArg("nightColorH"))
+      _config.saveNightColor(parseColor(request->arg("nightColorH")));
+    if (request->hasArg("nightColorM"))
+      _config.saveNightColorMinute(parseColor(request->arg("nightColorM")));
+    if (request->hasArg("nightColorS"))
+      _config.saveNightColorSecond(parseColor(request->arg("nightColorS")));
 
     if (request->hasArg("dayBright"))
       _config.saveDayBrightness(request->arg("dayBright").toInt());
@@ -806,7 +874,9 @@ void NetworkManager::setupRoutes() {
     html += "        alert('Saved!');";
     html += "        var cb = document.getElementById('calMode');";
     html += "        if(cb.checked) { cb.checked = false; toggleCalMode(cb); }";
-    html += "        setTimeout(() => { window.location.href = '/'; }, 300);"; // Add slight delay to allow toggleCalMode fetch to fire
+    html += "        setTimeout(() => { window.location.href = '/'; }, "
+            "300);"; // Add slight delay to allow toggleCalMode fetch to
+                     // fire
     html += "      } else { alert('Error: ' + r.statusText); }";
     html += "    })";
     html += "    .catch(e => alert('Error: ' + e));";
@@ -826,8 +896,14 @@ void NetworkManager::setupRoutes() {
     html += "  var fd = new FormData();";
     html += "  fd.append('idx', idx);";
     html += "  fd.append('val', val);";
-    html +=
-        "  fetch('/api/calibration/preview', { method: 'POST', body: fd });";
+    html += "  fetch('/api/calibration/preview', { method: 'POST', body: "
+            "fd });";
+    html += "}";
+    html += "function leavePage(event) {";
+    html += "  event.preventDefault();";
+    html += "  var cb = document.getElementById('calMode');";
+    html += "  if(cb && cb.checked) { cb.checked = false; toggleCalMode(cb); }";
+    html += "  setTimeout(() => { window.location.href = '/'; }, 200);";
     html += "}";
     html += "</script>";
     html += "</head><body>";
@@ -876,7 +952,7 @@ void NetworkManager::setupRoutes() {
 
     html += "<br><input type='submit' value='Save Calibration'>";
     html += "</form>";
-    html += "<a href='/'>&larr; Back to Dashboard</a>";
+    html += "<a href='#' onclick='leavePage(event)'>&larr; Back to Dashboard</a>";
     html += "</body></html>";
     request->send(200, "text/html", html);
   });
