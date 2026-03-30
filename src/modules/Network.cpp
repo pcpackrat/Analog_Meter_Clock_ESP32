@@ -241,8 +241,8 @@ void NetworkManager::setupRoutes() {
     html += "<a href='/settings/time' class='btn'>Time Settings</a>";
     html += "<a href='/settings/led' class='btn'>LED Lighting</a>";
     html += "<a href='/calibration' class='btn'>Meter Calibration</a>";
-    html += "<a href='/settings/system' class='btn'>Firmware</a>";
     html += "<a href='/wifi' class='btn'>WiFi Configuration</a>";
+    html += "<a href='/settings/system' class='btn'>Firmware</a>";
     html += "<script>setInterval(function() { fetch('/api/time').then(response "
             "=> response.text()).then(time => "
             "document.getElementById('clock').innerText = time).catch(err => "
@@ -794,6 +794,7 @@ void NetworkManager::setupRoutes() {
     html += "        alert('Saved!');";
     html += "        var cb = document.getElementById('calMode');";
     html += "        if(cb.checked) { cb.checked = false; toggleCalMode(cb); }";
+    html += "        setTimeout(() => { window.location.href = '/'; }, 300);"; // Add slight delay to allow toggleCalMode fetch to fire
     html += "      } else { alert('Error: ' + r.statusText); }";
     html += "    })";
     html += "    .catch(e => alert('Error: ' + e));";
