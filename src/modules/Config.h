@@ -22,6 +22,9 @@ public:
   bool get12H();
   void save12H(bool is12h);
 
+  bool getDisableDST();
+  void saveDisableDST(bool disable);
+
   bool getSmoothSeconds();
   void saveSmoothSeconds(bool smooth);
 
@@ -35,6 +38,9 @@ public:
   // Secondary Timezone
   String getTimezone2();
   void saveTimezone2(String tz);
+
+  bool getDisableDST2();
+  void saveDisableDST2(bool disable);
 
   // LED Day/Night Settings
   bool getUseSharedColors();
@@ -115,6 +121,8 @@ private:
   String _tz2;
   String _ntp;
   bool _is12h;
+  bool _disableDST;
+  bool _disableDST2;
   bool _smoothSeconds;
   bool _useNTP;
   time_t _manualTime;

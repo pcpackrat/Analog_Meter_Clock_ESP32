@@ -272,6 +272,9 @@ void NetworkManager::setupRoutes() {
     html += "<h1>WiFi Configuration</h1>";
     html += getWiFiScanHTML();
     html += "<h3>Connect to Network</h3>";
+    if (_config.getSSID() != "") {
+      html += "<p>Currently saved network: <strong>" + _config.getSSID() + "</strong></p>";
+    }
     html += "<form action='/save_wifi' method='POST'>";
     html += "<input type='text' name='ssid' placeholder='Network Name (SSID)' "
             "required><br>";
@@ -398,6 +401,8 @@ void NetworkManager::setupRoutes() {
         bool h12 = _config.get12H();
         bool useNTP = _config.getUseNTP();
         bool smoothSec = _config.getSmoothSeconds();
+        bool disDST = _config.getDisableDST();
+        bool disDST2 = _config.getDisableDST2();
 
         String html = "<html><head><meta name='viewport' "
                       "content='width=device-width, initial-scale=1'>";
@@ -454,6 +459,7 @@ void NetworkManager::setupRoutes() {
                   "</option>";
         }
         html += "</select>";
+        html += "<label style='margin-bottom: 10px; font-weight: normal; display: flex; align-items: center;'><input type='checkbox' name='disableDST' value='1'" + String(disDST ? " checked" : "") + " style='margin-right: 5px; width: auto;'> Disable DST for Primary</label>";
 
         // Timezone 2
         html += "<label>Secondary Timezone (GPIO Switch):</label><select "
@@ -464,6 +470,9 @@ void NetworkManager::setupRoutes() {
                   "</option>";
         }
         html += "</select>";
+        html += "<label style='margin-bottom: 15px; font-weight: normal; display: flex; align-items: center;'><input type='checkbox' name='disableDST2' value='1'" + String(disDST2 ? " checked" : "") + " style='margin-right: 5px; width: auto;'> Disable DST for Secondary</label>";
+        
+        html += "<p class='info' style='font-size: 0.85em; margin-bottom: 15px;'>Daylight Saving Time is handled automatically based on your timezone selection.</p>";
 
         // NTP Server
         html +=
@@ -521,6 +530,9 @@ void NetworkManager::setupRoutes() {
       _config.save12H(request->arg("h12") == "1");
     if (request->hasArg("smoothSec"))
       _config.saveSmoothSeconds(request->arg("smoothSec") == "1");
+      
+    _config.saveDisableDST(request->hasArg("disableDST") && request->arg("disableDST") == "1");
+    _config.saveDisableDST2(request->hasArg("disableDST2") && request->arg("disableDST2") == "1");
 
     if (request->hasArg("useNTP")) {
       bool use = request->arg("useNTP") == "1";

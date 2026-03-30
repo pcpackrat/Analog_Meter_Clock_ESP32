@@ -12,6 +12,8 @@ void Config::begin() {
   _tz2 = _prefs.getString("tz2", "UTC0");
   _ntp = _prefs.getString("ntp", "pool.ntp.org");
   _is12h = _prefs.getBool("12h", true);
+  _disableDST = _prefs.getBool("disDST", false);
+  _disableDST2 = _prefs.getBool("disDST2", false);
   _smoothSeconds = _prefs.getBool("smoothSec", false);
   _useNTP = _prefs.getBool("useNTP", true);
   _manualTime = _prefs.getULong64("manualTime", 0);
@@ -76,6 +78,12 @@ void Config::save12H(bool is12h) {
   _prefs.putBool("12h", is12h);
 }
 
+bool Config::getDisableDST() { return _disableDST; }
+void Config::saveDisableDST(bool disable) {
+  _disableDST = disable;
+  _prefs.putBool("disDST", disable);
+}
+
 bool Config::getSmoothSeconds() { return _smoothSeconds; }
 void Config::saveSmoothSeconds(bool smooth) {
   _smoothSeconds = smooth;
@@ -100,6 +108,12 @@ String Config::getTimezone2() { return _tz2; }
 void Config::saveTimezone2(String tz) {
   _tz2 = tz;
   _prefs.putString("tz2", tz);
+}
+
+bool Config::getDisableDST2() { return _disableDST2; }
+void Config::saveDisableDST2(bool disable) {
+  _disableDST2 = disable;
+  _prefs.putBool("disDST2", disable);
 }
 
 // LED Day/Night Settings

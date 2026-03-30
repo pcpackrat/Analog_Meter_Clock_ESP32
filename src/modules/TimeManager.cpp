@@ -12,6 +12,26 @@ void timeAvailable(struct timeval *t) {
 TimeManager::TimeManager(Config &config)
     : _config(config), _rtcFound(false), _isUTC(false), _lastRTCUpdate(0) {}
 
+String TimeManager::getEffectiveTimezone(String tz, bool disableDST) {
+  if (!disableDST) return tz;
+  String result = "";
+  bool foundNumber = false;
+  for (unsigned int i = 0; i < tz.length(); i++) {
+    char c = tz[i];
+    if (!foundNumber) {
+      if (isdigit(c)) foundNumber = true;
+      result += c;
+    } else {
+      if (isdigit(c) || c == '.') {
+        result += c;
+      } else {
+        break;
+      }
+    }
+  }
+  return result;
+}
+
 void TimeManager::setUseNTP(bool enabled) {
   // Only act if state changes or if force re-init is needed (simplified here)
   if (enabled) {
@@ -52,7 +72,8 @@ void TimeManager::setUseNTP(bool enabled) {
     sntp_init();
 
     // Manually apply timezone
-    setenv("TZ", tz.c_str(), 1);
+    String effTz = getEffectiveTimezone(tz, _config.getDisableDST());
+    setenv("TZ", effTz.c_str(), 1);
     tzset();
 
     Serial.println("NTP Initialized via Manual Sequence (Google Primary). "
@@ -68,13 +89,12 @@ void TimeManager::setUseNTP(bool enabled) {
 void TimeManager::setOverrideUTC(bool enabled) {
   if (enabled != _isUTC) {
     _isUTC = enabled;
-    if (_isUTC) {
-      Serial.println("Switching to Secondary Timezone\r\n");
-      configTzTime(_config.getTimezone2().c_str(), _config.getNTP().c_str());
-    } else {
-      Serial.println("Switching to Local Time\r\n");
-      configTzTime(_config.getTimezone().c_str(), _config.getNTP().c_str());
-    }
+    String tz = _isUTC ? _config.getTimezone2() : _config.getTimezone();
+    bool disDST = _isUTC ? _config.getDisableDST2() : _config.getDisableDST();
+    String effTz = getEffectiveTimezone(tz, disDST);
+    setenv("TZ", effTz.c_str(), 1);
+    tzset();
+    Serial.printf("Switching to %s Timezone: %s\r\n", _isUTC ? "Secondary" : "Local", effTz.c_str());
   }
 }
 
