@@ -1,4 +1,7 @@
 #include "Lighting.h"
+#include "TimeManager.h"
+
+extern TimeManager timeManager;
 
 Lighting::Lighting() {}
 
@@ -27,10 +30,11 @@ void Lighting::update(int hour, int minute, Config &config, bool isError) {
   }
 
   // Get settings from Config
-  uint8_t nightStart = config.getNightStart();
-  uint8_t nightStartMin = config.getNightStartMinute();
-  uint8_t nightEnd = config.getNightEnd();
-  uint8_t nightEndMin = config.getNightEndMinute();
+  bool useTz2 = timeManager.isSecondaryTzActive();
+  uint8_t nightStart = useTz2 ? config.getNightStart2() : config.getNightStart();
+  uint8_t nightStartMin = useTz2 ? config.getNightStartMinute2() : config.getNightStartMinute();
+  uint8_t nightEnd = useTz2 ? config.getNightEnd2() : config.getNightEnd();
+  uint8_t nightEndMin = useTz2 ? config.getNightEndMinute2() : config.getNightEndMinute();
 
   // Convert everything to minutes from midnight
   int currentMin = (hour * 60) + minute;
@@ -50,21 +54,23 @@ void Lighting::update(int hour, int minute, Config &config, bool isError) {
       isNight = true;
   }
 
-  CRGB targetColor;
-  uint8_t brightness;
-
-  if (isNight) {
-
-    targetColor = CRGB(config.getNightColor());
-    brightness = config.getNightBrightness();
-  } else {
-
-    targetColor = CRGB(config.getDayColor());
-    brightness = config.getDayBrightness();
-  }
-
+  uint8_t brightness = isNight ? config.getNightBrightness() : config.getDayBrightness();
   FastLED.setBrightness(brightness);
-  fill_solid(_leds, NUM_LEDS, targetColor);
+
+  if (config.getUseSharedColors()) {
+    CRGB targetColor = CRGB(isNight ? config.getNightColor() : config.getDayColor());
+    fill_solid(_leds, NUM_LEDS, targetColor);
+  } else {
+    if (isNight) {
+      setColor(0, CRGB(config.getNightColor()));
+      setColor(1, CRGB(config.getNightColorMinute()));
+      setColor(2, CRGB(config.getNightColorSecond()));
+    } else {
+      setColor(0, CRGB(config.getDayColor()));
+      setColor(1, CRGB(config.getDayColorMinute()));
+      setColor(2, CRGB(config.getDayColorSecond()));
+    }
+  }
 }
 
 void Lighting::show() { FastLED.show(); }

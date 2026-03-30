@@ -15,14 +15,23 @@ void Config::begin() {
   _smoothSeconds = _prefs.getBool("smoothSec", false);
   _useNTP = _prefs.getBool("useNTP", true);
   _manualTime = _prefs.getULong64("manualTime", 0);
+  _useSharedColors = _prefs.getBool("sharedColors", true);
   _dayColor = _prefs.getUInt("dayColor", 0xFFFFFF);
+  _dayColorM = _prefs.getUInt("dayColorM", 0xFFFFFF);
+  _dayColorS = _prefs.getUInt("dayColorS", 0xFFFFFF);
   _nightColor = _prefs.getUInt("nightColor", 0xFF00FF);
+  _nightColorM = _prefs.getUInt("nightColorM", 0xFF00FF);
+  _nightColorS = _prefs.getUInt("nightColorS", 0xFF00FF);
   _dayBrightness = _prefs.getUChar("dayBright", 200);
   _nightBrightness = _prefs.getUChar("nightBright", 50);
   _nightStart = _prefs.getUChar("nightStart", 21);
   _nightStartMin = _prefs.getUChar("nightStartMin", 0);
   _nightEnd = _prefs.getUChar("nightEnd", 7);
   _nightEndMin = _prefs.getUChar("nightEndMin", 0);
+  _nightStart2 = _prefs.getUChar("nightStart2", 21);
+  _nightStartMin2 = _prefs.getUChar("nightStartMin2", 0);
+  _nightEnd2 = _prefs.getUChar("nightEnd2", 7);
+  _nightEndMin2 = _prefs.getUChar("nightEndMin2", 0);
 
   // Load Calibration (Default 0-1023)
   _calHMin = _prefs.getUShort("calHMin", 0);
@@ -94,19 +103,48 @@ void Config::saveTimezone2(String tz) {
 }
 
 // LED Day/Night Settings
+bool Config::getUseSharedColors() { return _useSharedColors; }
+void Config::saveUseSharedColors(bool use) {
+  _useSharedColors = use;
+  _prefs.putBool("sharedColors", use);
+}
+
 uint32_t Config::getDayColor() { return _dayColor; }
 void Config::saveDayColor(uint32_t color) {
   _dayColor = color;
   _prefs.putUInt("dayColor", color);
 }
 
+uint32_t Config::getDayColorMinute() { return _dayColorM; }
+void Config::saveDayColorMinute(uint32_t color) {
+  _dayColorM = color;
+  _prefs.putUInt("dayColorM", color);
+}
+
+uint32_t Config::getDayColorSecond() { return _dayColorS; }
+void Config::saveDayColorSecond(uint32_t color) {
+  _dayColorS = color;
+  _prefs.putUInt("dayColorS", color);
+}
+
 uint32_t Config::getNightColor() {
-  // Serial.printf("Config::getNightColor returning 0x%06X\n", _nightColor);
   return _nightColor;
 }
 void Config::saveNightColor(uint32_t color) {
   _nightColor = color;
   _prefs.putUInt("nightColor", color);
+}
+
+uint32_t Config::getNightColorMinute() { return _nightColorM; }
+void Config::saveNightColorMinute(uint32_t color) {
+  _nightColorM = color;
+  _prefs.putUInt("nightColorM", color);
+}
+
+uint32_t Config::getNightColorSecond() { return _nightColorS; }
+void Config::saveNightColorSecond(uint32_t color) {
+  _nightColorS = color;
+  _prefs.putUInt("nightColorS", color);
 }
 
 uint8_t Config::getDayBrightness() { return _dayBrightness; }
@@ -143,6 +181,30 @@ uint8_t Config::getNightEndMinute() { return _nightEndMin; }
 void Config::saveNightEndMinute(uint8_t min) {
   _nightEndMin = min;
   _prefs.putUChar("nightEndMin", min);
+}
+
+uint8_t Config::getNightStart2() { return _nightStart2; }
+void Config::saveNightStart2(uint8_t hour) {
+  _nightStart2 = hour;
+  _prefs.putUChar("nightStart2", hour);
+}
+
+uint8_t Config::getNightStartMinute2() { return _nightStartMin2; }
+void Config::saveNightStartMinute2(uint8_t min) {
+  _nightStartMin2 = min;
+  _prefs.putUChar("nightStartMin2", min);
+}
+
+uint8_t Config::getNightEnd2() { return _nightEnd2; }
+void Config::saveNightEnd2(uint8_t hour) {
+  _nightEnd2 = hour;
+  _prefs.putUChar("nightEnd2", hour);
+}
+
+uint8_t Config::getNightEndMinute2() { return _nightEndMin2; }
+void Config::saveNightEndMinute2(uint8_t min) {
+  _nightEndMin2 = min;
+  _prefs.putUChar("nightEndMin2", min);
 }
 
 // Calibration Settings

@@ -25,6 +25,7 @@ private:
 
   void setupAP();
   String getCommonStyle();
+  String getTzAbbrev(String posixStr);
   void connectWiFi();
   void setupRoutes();
   void startAsyncScan();

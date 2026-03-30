@@ -69,13 +69,17 @@ void TimeManager::setOverrideUTC(bool enabled) {
   if (enabled != _isUTC) {
     _isUTC = enabled;
     if (_isUTC) {
-      Serial.println("Switching to UTC\r\n");
-      configTzTime("UTC0", _config.getNTP().c_str());
+      Serial.println("Switching to Secondary Timezone\r\n");
+      configTzTime(_config.getTimezone2().c_str(), _config.getNTP().c_str());
     } else {
       Serial.println("Switching to Local Time\r\n");
       configTzTime(_config.getTimezone().c_str(), _config.getNTP().c_str());
     }
   }
+}
+
+bool TimeManager::isSecondaryTzActive() const {
+  return _isUTC;
 }
 
 void TimeManager::begin() {

@@ -19,6 +19,7 @@ public:
   float getExactSecond();
   String getFormattedTime();
   bool isTimeSet();
+  bool isSecondaryTzActive() const;
 
 private:
   Config &_config;

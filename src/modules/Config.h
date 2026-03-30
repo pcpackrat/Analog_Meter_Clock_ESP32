@@ -37,11 +37,22 @@ public:
   void saveTimezone2(String tz);
 
   // LED Day/Night Settings
+  bool getUseSharedColors();
+  void saveUseSharedColors(bool use);
+
   uint32_t getDayColor(); // RGB as uint32_t (0xRRGGBB)
   void saveDayColor(uint32_t color);
+  uint32_t getDayColorMinute();
+  void saveDayColorMinute(uint32_t color);
+  uint32_t getDayColorSecond();
+  void saveDayColorSecond(uint32_t color);
 
   uint32_t getNightColor();
   void saveNightColor(uint32_t color);
+  uint32_t getNightColorMinute();
+  void saveNightColorMinute(uint32_t color);
+  uint32_t getNightColorSecond();
+  void saveNightColorSecond(uint32_t color);
 
   uint8_t getDayBrightness(); // 0-255
   void saveDayBrightness(uint8_t brightness);
@@ -58,6 +69,16 @@ public:
   void saveNightEnd(uint8_t hour);
   uint8_t getNightEndMinute();
   void saveNightEndMinute(uint8_t min);
+
+  uint8_t getNightStart2();
+  void saveNightStart2(uint8_t hour);
+  uint8_t getNightStartMinute2();
+  void saveNightStartMinute2(uint8_t min);
+
+  uint8_t getNightEnd2();
+  void saveNightEnd2(uint8_t hour);
+  uint8_t getNightEndMinute2();
+  void saveNightEndMinute2(uint8_t min);
 
   // Calibration Settings
   uint16_t getCalHMin();
@@ -97,14 +118,23 @@ private:
   bool _smoothSeconds;
   bool _useNTP;
   time_t _manualTime;
+  bool _useSharedColors;
   uint32_t _dayColor;
+  uint32_t _dayColorM;
+  uint32_t _dayColorS;
   uint32_t _nightColor;
+  uint32_t _nightColorM;
+  uint32_t _nightColorS;
   uint8_t _dayBrightness;
   uint8_t _nightBrightness;
   uint8_t _nightStart;
   uint8_t _nightStartMin;
   uint8_t _nightEnd;
   uint8_t _nightEndMin;
+  uint8_t _nightStart2;
+  uint8_t _nightStartMin2;
+  uint8_t _nightEnd2;
+  uint8_t _nightEndMin2;
 
   // Calibration Cache
   uint16_t _calHMin;

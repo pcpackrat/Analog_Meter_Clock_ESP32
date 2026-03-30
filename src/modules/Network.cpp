@@ -139,6 +139,20 @@ String NetworkManager::getWiFiScanHTML() {
          "<p>Please manually enter your network SSID below.</p>";
 }
 
+String NetworkManager::getTzAbbrev(String posix) {
+  String abbrev = "";
+  for(unsigned int i=0; i<posix.length(); i++) {
+    char c = posix[i];
+    if(c >= 'A' && c <= 'Z') {
+      abbrev += c;
+    } else {
+      break;
+    }
+  }
+  if (abbrev == "") return "Local";
+  return abbrev;
+}
+
 void NetworkManager::setupRoutes() {
   _server.onNotFound([this](AsyncWebServerRequest *request) {
     Serial.print("[HTTP] 404 Not Found: ");
@@ -541,76 +555,113 @@ void NetworkManager::setupRoutes() {
   //  LED SETTINGS
   // =================================================================================
   _server.on("/settings/led", HTTP_GET, [this](AsyncWebServerRequest *request) {
+    bool sharedColors = _config.getUseSharedColors();
     uint32_t dayColor = _config.getDayColor();
+    uint32_t dayColorM = _config.getDayColorMinute();
+    uint32_t dayColorS = _config.getDayColorSecond();
     uint32_t nightColor = _config.getNightColor();
+    uint32_t nightColorM = _config.getNightColorMinute();
+    uint32_t nightColorS = _config.getNightColorSecond();
+
     uint8_t dayBright = _config.getDayBrightness();
     uint8_t nightBright = _config.getNightBrightness();
+
     uint8_t nightStart = _config.getNightStart();
     uint8_t nightEnd = _config.getNightEnd();
+    uint8_t nightStart2 = _config.getNightStart2();
+    uint8_t nightEnd2 = _config.getNightEnd2();
 
-    String html = "<html><head><meta name='viewport' "
-                  "content='width=device-width, initial-scale=1'>";
+    String tzAbbrev1 = getTzAbbrev(_config.getTimezone());
+    String tzAbbrev2 = getTzAbbrev(_config.getTimezone2());
+
+    String html = "<html><head><meta name='viewport' content='width=device-width, initial-scale=1'>";
     html += getCommonStyle();
+    html += "<style>";
+    html += "  #individualColors { display: " + String(sharedColors ? "none" : "block") + "; padding-left: 10px; border-left: 2px solid #ccc; margin-left: 5px; }";
+    html += "  #sharedColorsDiv { display: " + String(sharedColors ? "block" : "none") + "; }";
+    html += "</style>";
     html += "<script>";
+    html += "function toggleColorFields() {";
+    html += "  var chk = document.getElementById('sharedChk').checked;";
+    html += "  document.getElementById('sharedColorsDiv').style.display = chk ? 'block' : 'none';";
+    html += "  document.getElementById('individualColors').style.display = chk ? 'none' : 'block';";
+    html += "}";
     html += "function updateSlider(id, valId) {";
     html += "  var val = document.getElementById(id).value;";
-    html += "  document.getElementById(valId).innerText = Math.round(val * 100 "
-            "/ 255) + '%';";
+    html += "  document.getElementById(valId).innerText = Math.round(val * 100 / 255) + '%';";
     html += "}";
     html += "function saveLed(event) {";
     html += "  event.preventDefault();";
-    html += "  fetch('/save_led', { method: 'POST', body: new "
-            "FormData(event.target) })";
-    html += "    .then(r => { if(r.ok) alert('LED Settings Saved!'); else "
-            "alert('Error!'); });";
+    html += "  fetch('/save_led', { method: 'POST', body: new FormData(event.target) })";
+    html += "    .then(r => { if(r.ok) alert('LED Settings Saved!'); else alert('Error!'); });";
     html += "  return false;";
     html += "}";
     html += "</script></head><body>";
 
     html += "<h1>LED Lighting</h1>";
     html += "<form onsubmit='return saveLed(event)'>";
-
-    // Day
-    char buf[10];
-    sprintf(buf, "#%06X", dayColor);
-    html +=
-        "<label>Day Color:</label><input type='color' name='dayColor' value='" +
-        String(buf) + "'>";
-
+    
+    // Day Brightness
     html += "<label>Day Brightness:</label><div class='slider-container'>";
-    html += "<input type='range' id='db' name='dayBright' min='0' max='255' "
-            "value='" +
-            String(dayBright) + "' oninput='updateSlider(\"db\", \"dbv\")'>";
-    html += "<span class='slider-value' id='dbv'>" +
-            String(dayBright * 100 / 255) + "%</span></div>";
+    html += "<input type='range' id='db' name='dayBright' min='0' max='255' value='" + String(dayBright) + "' oninput='updateSlider(\"db\", \"dbv\")'>";
+    html += "<span class='slider-value' id='dbv'>" + String(dayBright * 100 / 255) + "%</span></div>";
 
-    // Night
-    sprintf(buf, "#%06X", nightColor);
-    html += "<label>Night Color:</label><input type='color' name='nightColor' "
-            "value='" +
-            String(buf) + "'>";
-
+    // Night Brightness
     html += "<label>Night Brightness:</label><div class='slider-container'>";
-    html += "<input type='range' id='nb' name='nightBright' min='0' max='255' "
-            "value='" +
-            String(nightBright) + "' oninput='updateSlider(\"nb\", \"nbv\")'>";
-    html += "<span class='slider-value' id='nbv'>" +
-            String(nightBright * 100 / 255) +
-            "%</span></div>"; // Fixed % calculation
+    html += "<input type='range' id='nb' name='nightBright' min='0' max='255' value='" + String(nightBright) + "' oninput='updateSlider(\"nb\", \"nbv\")'>";
+    html += "<span class='slider-value' id='nbv'>" + String(nightBright * 100 / 255) + "%</span></div>";
+
+    html += "<h3>Meter Colors</h3>";
+    html += "<label><input type='checkbox' id='sharedChk' name='sharedColors' value='1' onchange='toggleColorFields()'" + String(sharedColors ? " checked" : "") + "> Use same color for all meters</label><br>";
+
+    char buf[10];
+
+    // Shared Colors Div
+    html += "<div id='sharedColorsDiv'>";
+    sprintf(buf, "#%06X", dayColor);
+    html += "<label>Day Color:</label><input type='color' name='dayColor' value='" + String(buf) + "'>";
+    sprintf(buf, "#%06X", nightColor);
+    html += "<label>Night Color:</label><input type='color' name='nightColor' value='" + String(buf) + "'>";
+    html += "</div>";
+
+    // Individual Colors Div
+    html += "<div id='individualColors'>";
+    html += "<h4>Hour Meter</h4>";
+    sprintf(buf, "#%06X", dayColor); // We reuse dayColor for Hour
+    html += "<label>Day:</label><input type='color' name='dayColorH' value='" + String(buf) + "'>";
+    sprintf(buf, "#%06X", nightColor); // We reuse nightColor for Hour
+    html += "<label>Night:</label><input type='color' name='nightColorH' value='" + String(buf) + "'>";
+
+    html += "<h4>Minute Meter</h4>";
+    sprintf(buf, "#%06X", dayColorM);
+    html += "<label>Day:</label><input type='color' name='dayColorM' value='" + String(buf) + "'>";
+    sprintf(buf, "#%06X", nightColorM);
+    html += "<label>Night:</label><input type='color' name='nightColorM' value='" + String(buf) + "'>";
+
+    html += "<h4>Second Meter</h4>";
+    sprintf(buf, "#%06X", dayColorS);
+    html += "<label>Day:</label><input type='color' name='dayColorS' value='" + String(buf) + "'>";
+    sprintf(buf, "#%06X", nightColorS);
+    html += "<label>Night:</label><input type='color' name='nightColorS' value='" + String(buf) + "'>";
+    html += "</div>";
 
     // Schedule
+    html += "<h3>Night Schedule</h3>";
     char tBuf[6];
+    
+    // Primary Timezone Schedule
     sprintf(tBuf, "%02d:%02d", nightStart, _config.getNightStartMinute());
-    html += "<label>Night Start (CST):</label><input type='time' "
-            "name='nightStart' value='" +
-            String(tBuf) + "'>";
-
+    html += "<label>Night Start (" + tzAbbrev1 + "):</label><input type='time' name='nightStart' value='" + String(tBuf) + "'>";
     sprintf(tBuf, "%02d:%02d", nightEnd, _config.getNightEndMinute());
-    html += "<label>Night End (CST):</label><input type='time' name='nightEnd' "
-            "value='" +
-            String(tBuf) + "'>";
+    html += "<label>Night End (" + tzAbbrev1 + "):</label><input type='time' name='nightEnd' value='" + String(tBuf) + "'>";
 
-    html += "<div class='info'>Night mode activates between these times.</div>";
+    // Secondary Timezone Schedule
+    sprintf(tBuf, "%02d:%02d", nightStart2, _config.getNightStartMinute2());
+    html += "<label>Secondary Night Start (" + tzAbbrev2 + "):</label><input type='time' name='nightStart2' value='" + String(tBuf) + "'>";
+    sprintf(tBuf, "%02d:%02d", nightEnd2, _config.getNightEndMinute2());
+    html += "<label>Secondary Night End (" + tzAbbrev2 + "):</label><input type='time' name='nightEnd2' value='" + String(tBuf) + "'>";
+
+    html += "<div class='info'>Night mode activates between these times automatically switching dynamically with GPIO Timezone switch.</div>";
     html += "<input type='submit' value='Save LED Settings'>";
     html += "</form>";
     html += "<a href='/'>&larr; Back to Dashboard</a></body></html>";
@@ -618,16 +669,24 @@ void NetworkManager::setupRoutes() {
   });
 
   _server.on("/save_led", HTTP_POST, [this](AsyncWebServerRequest *request) {
-    if (request->hasArg("dayColor")) {
-      String c = request->arg("dayColor");
+    bool sharedColors = request->hasArg("sharedColors") && request->arg("sharedColors") == "1";
+    _config.saveUseSharedColors(sharedColors);
+
+    auto parseColor = [](String c) {
       c.replace("#", "");
-      _config.saveDayColor(strtoul(c.c_str(), NULL, 16));
-    }
-    if (request->hasArg("nightColor")) {
-      String c = request->arg("nightColor");
-      c.replace("#", "");
-      _config.saveNightColor(strtoul(c.c_str(), NULL, 16));
-    }
+      return strtoul(c.c_str(), NULL, 16);
+    };
+
+    if (request->hasArg("dayColor")) _config.saveDayColor(parseColor(request->arg("dayColor")));
+    if (request->hasArg("dayColorH")) _config.saveDayColor(parseColor(request->arg("dayColorH"))); // Hour shares same var
+    if (request->hasArg("dayColorM")) _config.saveDayColorMinute(parseColor(request->arg("dayColorM")));
+    if (request->hasArg("dayColorS")) _config.saveDayColorSecond(parseColor(request->arg("dayColorS")));
+
+    if (request->hasArg("nightColor")) _config.saveNightColor(parseColor(request->arg("nightColor")));
+    if (request->hasArg("nightColorH")) _config.saveNightColor(parseColor(request->arg("nightColorH")));
+    if (request->hasArg("nightColorM")) _config.saveNightColorMinute(parseColor(request->arg("nightColorM")));
+    if (request->hasArg("nightColorS")) _config.saveNightColorSecond(parseColor(request->arg("nightColorS")));
+
     if (request->hasArg("dayBright"))
       _config.saveDayBrightness(request->arg("dayBright").toInt());
     if (request->hasArg("nightBright"))
@@ -649,6 +708,23 @@ void NetworkManager::setupRoutes() {
         _config.saveNightEndMinute(t.substring(sep + 1).toInt());
       }
     }
+    if (request->hasArg("nightStart2")) {
+      String t = request->arg("nightStart2");
+      int sep = t.indexOf(':');
+      if (sep > 0) {
+        _config.saveNightStart2(t.substring(0, sep).toInt());
+        _config.saveNightStartMinute2(t.substring(sep + 1).toInt());
+      }
+    }
+    if (request->hasArg("nightEnd2")) {
+      String t = request->arg("nightEnd2");
+      int sep = t.indexOf(':');
+      if (sep > 0) {
+        _config.saveNightEnd2(t.substring(0, sep).toInt());
+        _config.saveNightEndMinute2(t.substring(sep + 1).toInt());
+      }
+    }
+
     request->send(200, "text/plain", "OK");
   });
 
