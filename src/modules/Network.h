@@ -17,6 +17,7 @@ private:
   AsyncWebServer _server;
   DNSServer _dnsServer;
   bool _isAP;
+  unsigned long _apStartTime;
 
   // WiFi scan caching to prevent blocking
   String _cachedScanHTML;

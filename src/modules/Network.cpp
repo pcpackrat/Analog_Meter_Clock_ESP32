@@ -12,7 +12,7 @@ extern TimeManager timeManager;
 #define DNS_PORT 53
 
 NetworkManager::NetworkManager(Config &config)
-    : _server(80), _dnsServer(), _config(config), _isAP(false) {}
+    : _server(80), _dnsServer(), _config(config), _isAP(false), _apStartTime(0) {}
 
 void NetworkManager::begin() {
   _config.begin(); // Ensure config is initialized
@@ -66,6 +66,7 @@ void NetworkManager::connectWiFi() {
 void NetworkManager::setupAP() {
   Serial.println("\n========== STARTING ACCESS POINT ==========");
   _isAP = true;
+  _apStartTime = millis();
 
   // Disable WiFi persistence to prevent NVS corruption
   WiFi.persistent(false);
@@ -748,24 +749,26 @@ void NetworkManager::setupRoutes() {
       return strtoul(c.c_str(), NULL, 16);
     };
 
-    if (request->hasArg("dayColor"))
-      _config.saveDayColor(parseColor(request->arg("dayColor")));
-    if (request->hasArg("dayColorH"))
-      _config.saveDayColor(
-          parseColor(request->arg("dayColorH"))); // Hour shares same var
-    if (request->hasArg("dayColorM"))
-      _config.saveDayColorMinute(parseColor(request->arg("dayColorM")));
-    if (request->hasArg("dayColorS"))
-      _config.saveDayColorSecond(parseColor(request->arg("dayColorS")));
+    if (sharedColors) {
+      if (request->hasArg("dayColor"))
+        _config.saveDayColor(parseColor(request->arg("dayColor")));
+      if (request->hasArg("nightColor"))
+        _config.saveNightColor(parseColor(request->arg("nightColor")));
+    } else {
+      if (request->hasArg("dayColorH"))
+        _config.saveDayColor(parseColor(request->arg("dayColorH")));
+      if (request->hasArg("dayColorM"))
+        _config.saveDayColorMinute(parseColor(request->arg("dayColorM")));
+      if (request->hasArg("dayColorS"))
+        _config.saveDayColorSecond(parseColor(request->arg("dayColorS")));
 
-    if (request->hasArg("nightColor"))
-      _config.saveNightColor(parseColor(request->arg("nightColor")));
-    if (request->hasArg("nightColorH"))
-      _config.saveNightColor(parseColor(request->arg("nightColorH")));
-    if (request->hasArg("nightColorM"))
-      _config.saveNightColorMinute(parseColor(request->arg("nightColorM")));
-    if (request->hasArg("nightColorS"))
-      _config.saveNightColorSecond(parseColor(request->arg("nightColorS")));
+      if (request->hasArg("nightColorH"))
+        _config.saveNightColor(parseColor(request->arg("nightColorH")));
+      if (request->hasArg("nightColorM"))
+        _config.saveNightColorMinute(parseColor(request->arg("nightColorM")));
+      if (request->hasArg("nightColorS"))
+        _config.saveNightColorSecond(parseColor(request->arg("nightColorS")));
+    }
 
     if (request->hasArg("dayBright"))
       _config.saveDayBrightness(request->arg("dayBright").toInt());
@@ -1071,7 +1074,17 @@ void NetworkManager::setupRoutes() {
 
 void NetworkManager::loop() {
   if (_isAP) {
-    _dnsServer.processNextRequest();
+    // 15 minute timeout (15 * 60 * 1000 ms)
+    if (millis() - _apStartTime > 900000UL) {
+      Serial.println("\n--- AP Timeout Reached (15 mins) ---");
+      Serial.println("Shutting down AP to save power. Power cycle required to restart it.");
+      WiFi.softAPdisconnect(true);
+      _dnsServer.stop();
+      _server.end();
+      _isAP = false;
+    } else {
+      _dnsServer.processNextRequest();
+    }
   }
 }
 
